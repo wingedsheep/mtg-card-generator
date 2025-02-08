@@ -165,12 +165,20 @@ Return only the JSON array with no additional text or explanation."""
             for card in all_context_cards
         ])
 
+        inspiration_cards = "\n".join([
+            f"- {card.name} ({card.rarity}): {card.type} with {card.mana_cost}, {card.text}"
+            for card in self.inspiration_cards
+        ])
+
         return f"""Based on the following context for a Magic: The Gathering set:
+        
+Inspiration cards (not from this set):
+{inspiration_cards}
 
 Theme:
 {self.set_theme}
 
-Existing cards in the universe:
+Existing cards in the set:
 {cards_text}
 
 Current color distribution:
@@ -184,6 +192,9 @@ Generate {self.config.cards_per_batch} new cards with the following rarity distr
 - {self.config.rares_per_batch} Rare
 - {self.config.uncommons_per_batch} Uncommon
 - {self.config.commons_per_batch} Common
+
+Make sure that the cards in this batch are varied and different enough from the existing cards in the set.
+Make sure they supplement the existing cards well.
 
 For each card, provide a complete description in this format:
 Card Name (Rarity)

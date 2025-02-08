@@ -50,6 +50,8 @@ Focus on creating a vivid, detailed scene that captures the essence of the card'
 The description should be specific about composition, lighting, mood, and important details.
 Include details about the art style and technical aspects at the end.
 
+Create something unique, and add a touch of your own creativity to the prompt.
+
 Example prompt: 
 
 ``` 
