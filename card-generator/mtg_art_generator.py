@@ -88,7 +88,7 @@ Return only the prompt text with no additional explanation."""
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2)
 
-    def generate_card_art(self, card: Card, max_retries: int = 3, retry_delay: int = 5) -> tuple[str, bytes]:
+    def generate_card_art(self, card: Card, max_retries: int = 5, retry_delay: int = 3) -> tuple[str, bytes]:
         """Generate both art prompt and image for a card with retry logic.
 
         Args:
