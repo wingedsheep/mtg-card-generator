@@ -1,0 +1,480 @@
+/* ======================== FONT DEFINITIONS ======================== */
+@font-face {
+    font-family: "Beleren";
+    src: url("assets/fonts/beleren-bold_P1.01.ttf") format("truetype");
+}
+@font-face {
+    font-family: "Beleren Small Caps";
+    src: url("assets/fonts/belerensmallcaps-bold.ttf") format("truetype");
+}
+@font-face {
+    font-family: "MPlantin";
+    src: url("assets/fonts/mplantin.ttf") format("truetype");
+}
+@font-face {
+    font-family: "MPlantin-Italic";
+    src: url("assets/fonts/MPlantin-Italic.ttf") format("truetype");
+    font-style: italic;
+}
+@font-face {
+    font-family: "Relay Medium";
+    src: url("assets/fonts/relay-medium.ttf") format("truetype");
+}
+@font-face {
+    font-family: "Relay Wide Medium";
+    src: url("assets/fonts/relaywide-medium.ttf") format("truetype");
+}
+@font-face {
+    font-family: "NDPMTG";
+    src: url("assets/fonts/NDPMTG.ttf") format("truetype");
+}
+
+/* ======================== CARD CONTAINER ======================== */
+.mtg-card {
+    position: relative;
+    width: 63.5mm;
+    height: 88.9mm;
+    border-radius: 3mm;
+    padding: 2.25mm;
+    background-color: black;
+    font-family: Beleren;
+    font-size: 3mm;
+    text-rendering: geometricPrecision;
+    box-sizing: border-box;
+}
+
+/* ======================== BACKGROUND & FRAME ======================== */
+.inner-background {
+    position: absolute;
+    left: calc((63.5mm - 58.5mm) / 2);
+    width: 58.5mm;
+    height: 78mm;
+    margin: auto;
+    border-radius: 0.75mm 0.75mm 4mm 4mm;
+    overflow-y: visible;
+    background-image: var(--bg-image);
+    background-size: 100%;
+    padding-top: 1.1mm;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    user-select: none;
+}
+.inner-frame {
+    position: absolute;
+    margin: auto;
+    width: calc(58.5mm * 0.98);
+    top: 3.5mm;
+    left: calc((63.5mm - 58.5mm * 0.98) / 2);
+    height: 79mm;
+    filter: drop-shadow(-0.25mm 0.25mm 0.15mm black)
+    drop-shadow(0.1mm -0.2mm 0.1mm #ffffffa0);
+    background-image: var(--frame-image);
+    background-size: 100%;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* ======================== TOP & MID LINES ======================== */
+.top-line,
+.mid-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 5.1mm;
+    width: 53.8mm;
+    margin: auto;
+    padding: 0 1mm 0 1.5mm;
+    background-image: var(--boxes-image);
+    background-size: 100%;
+    pointer-events: initial;
+    user-select: initial;
+}
+.top-line {
+    position: absolute;
+    top: 4mm;
+    left: 0;
+    right: 0;
+    color: var(--top-line-color, black);
+    gap: 1.5mm;
+}
+
+/* ======================== NAME & ORIGINAL NAME ======================== */
+.name {
+    /* font-size: 9.454pt; */ /*Removed fixed size*/
+    font-size: calc(9.454pt + (100/53.8)vw); /* Start with base, add viewport width */
+    max-font-size: 12pt;        /* Limit size to prevent overcrowding */
+    flex-shrink: 1; /* Allow to shrink if necessary */
+     min-width:0;
+
+    white-space: nowrap;/*keep to avoid line being too long*/
+    overflow: hidden;/*keep in case of overflow*/
+    text-overflow: ellipsis;/*keep*/
+
+    letter-spacing: 0.034mm;
+     width: 100%;
+    box-sizing: border-box;
+
+
+}
+.original-name-container {
+    position: absolute;
+    bottom: -0.05mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 54mm;
+}
+.original-name-bg {
+    position: absolute;
+}
+.original-name-bg-path {
+    stroke: #000000;
+    stroke-width: 0.01;
+    fill: url(#gradient);
+}
+.original-name-left {
+    stop-color: var(--frame-colors-left, #0e3d95);
+}
+.original-name-right {
+    stop-color: var(--frame-colors-right, #0e3d95);
+}
+.original-name {
+    position: absolute;
+    width: 100%;
+    color: #fff;
+    font-size: 2.1mm;
+    letter-spacing: 0.1mm;
+    font-family: "MPlantin-Italic";
+    font-style: italic;
+    line-height: 3.1mm;
+    text-align: center;
+}
+
+/* ======================== MANA COST ======================== */
+.mana-cost {
+    font-size: 6.4pt;
+    display: flex;
+    gap: 0.24mm;
+    margin-top: -0.4mm;
+      white-space: nowrap;/*keep to avoid line being too long*/
+}
+.mana-cost .ms,
+.adventure-mana-cost .ms {
+    width: 1.35em;
+    height: 1.35em; /* Make sure height is also set */
+    border-radius: 50%;
+    box-shadow: -0.2mm 0.2mm 0 rgba(0, 0, 0, 0.85);
+    display: inline-flex; /* Use flex to center content inside */
+    align-items: center;
+    justify-content: center;
+      flex-shrink: 0;
+}
+
+/* ======================== ILLUSTRATION (ART) ======================== */
+.illustration {
+    z-index: 1000;
+    position: absolute;
+    top: 9.55mm;
+    left: 4.4mm;
+    width: 54.7mm;
+    height: 39.9mm;
+    margin: auto;
+    background-image: var(--illustration-image);
+    background-color: yellow;
+    background-size: calc(var(--illustration-scale, 1) * 100%);
+    background-position: var(--illustration-position-x, 0) var(--illustration-position-y, 0);
+    background-repeat: no-repeat;
+    cursor: grab;
+}
+
+/* ======================== MID LINE & OTHERS ======================== */
+.mid-line {
+    position: absolute;
+    top: 49.9mm;
+    left: 0;
+    right: 0;
+    background-position: 0 bottom;
+    gap: 0.6mm;
+    color: var(--mid-line-color, black);
+    background-image: var(--mid-boxes-image, var(--boxes-image));
+}
+.color-indicator {
+    width: 2.8mm;
+    margin-left: -0.5mm;
+}
+.type-line {
+     /* Removed fixed font-size */
+    font-size: calc(8pt + (100/53.8)vw);
+    max-font-size: 10pt;           /* Limit growth*/
+    flex-grow: 1;
+    white-space: nowrap;
+    margin-top: -0.2mm;
+    overflow: hidden;  /* Hide any overflowing text */
+    text-overflow: ellipsis; /* Show "..." for overflowing text */
+       min-width: 0;
+}
+.set-icon-container {
+    height: 3.9mm;
+    width: 7mm;
+    margin-right: 0.3mm;
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    margin-top: -0.2mm;
+}
+.set-icon {
+    max-height: 100%;
+    max-width: 100%;
+}
+
+/* ======================== ORACLE TEXT ======================== */
+.oracle {
+    font-family: "MPlantin";
+    font-size: 8pt; /* Initial font size */
+    line-height: 1em;
+    pointer-events: initial;
+    user-select: initial;
+}
+
+.oracle .ms {
+    width: 0.8em;
+    margin: 0 0.07em;
+    vertical-align: baseline;
+}
+
+.normal-oracle {
+    position: absolute;
+    top: 55.6mm;
+    left: 0;
+    right: 0;
+    width: 53.8mm;
+    height: 26mm;
+    margin: auto;
+    padding: 1mm; /* Add some padding */
+    box-sizing: border-box; /* Include padding in the element's total width/height */
+}
+
+.oracle > div {
+	overflow-wrap: break-word; /* VERY IMPORTANT: Allows long words to break */
+    word-wrap: break-word; /* For older browsers */
+    hyphens: auto; /* Enable hyphenation */
+    margin-bottom: 0.5mm; /* Space between oracle and flavor */
+}
+
+.oracle > div:last-child {
+  margin-bottom: 0; /*Remove margin from the last child*/
+}
+
+/* Flavor text should be italic */
+.oracle-flavor {
+    font-family: "MPlantin-Italic", serif;
+    font-style: italic;
+}
+
+/* ======================== PT-BOX & LOYALTY ======================== */
+.pt-box {
+    position: absolute;
+    right: 3mm;
+    bottom: 3.8mm;
+    width: 11.58mm;
+    height: 6.2mm;
+    background-image: var(--pt-box-image);
+    background-size: 100%;
+    background-repeat: no-repeat;
+    text-align: center;
+    line-height: 5.5mm;
+    font-family: Beleren;
+    font-size: 9.6pt;
+    color: var(--pt-box-color, black);
+    pointer-events: initial;
+    user-select: initial;
+    z-index: 3;
+     display: flex; /*for wrapping text*/
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    overflow-wrap: break-word; /*wrap text*/
+}
+.loyalty {
+    position: absolute;
+    right: 3mm;
+    bottom: 5mm;
+    width: 9.8mm;
+    height: 5.8mm;
+    background-image: url("assets/img/planeswalker/Loyalty.webp");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    text-align: center;
+    line-height: 6.4mm;
+    font-size: 9.5pt;
+    color: white;
+    pointer-events: initial;
+    user-select: initial;
+    z-index: 3;
+      display: flex;  /*For wrapping text*/
+    align-items: center;
+    justify-content: center;
+     overflow-wrap: break-word; /* Wrap if necessary */
+
+}
+
+/* ======================== FOOTER ======================== */
+.footer {
+    position: absolute;
+    top: 82.91mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 55mm;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    color: white;
+    font-family: "Relay Wide Medium";
+    font-size: 3.9pt;
+    z-index: 3;
+}
+.footer-left > div,
+.footer-right > div {
+    height: 1.35mm;
+}
+.collector-number {
+    letter-spacing: 0.2mm;
+}
+.copyright {
+    font-family: "MPlantin";
+    margin-top: 0.2mm;
+    font-size: 4pt;
+}
+.set {
+    letter-spacing: 0.23mm;
+}
+.language {
+    letter-spacing: 0.15mm;
+}
+.artist-icon {
+    font-family: NDPMTG;
+}
+.artist-name {
+    font-family: "Beleren Small Caps";
+    font-size: 4.5pt;
+}
+
+/* ======================== ICONS (FLIP, MDFC, TRANSFORM) ======================== */
+.flip-icon {
+    position: absolute;
+    bottom: -12mm;
+    left: 50%;
+    font-size: 10mm;
+    user-select: none;
+    cursor: pointer;
+    transform: translateX(-50%) rotateX(60deg);
+}
+.mdfc-icon {
+    position: absolute;
+    top: 4.1mm;
+    left: 2.5mm;
+    width: 5.8mm;
+    aspect-ratio: 294 / 238;
+    background-image: var(--mdfc-icon-image);
+    background-size: 100%;
+    z-index: 3;
+}
+.mdfc-hint {
+    position: absolute;
+    bottom: 6.2mm;
+    left: 1.6mm;
+    width: 28mm;
+    height: 3.9mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 5pt;
+    color: var(--mdfc-hint-color);
+    background-image: var(--mdfc-hint-image);
+    background-size: 100%;
+    padding: 0 2.6mm;
+    padding-top: 0.1mm;
+    box-sizing: border-box;
+    z-index: 3;
+}
+.transform-icon {
+    position: absolute;
+    top: 4mm;
+    left: 3.5mm;
+    width: 5.4mm;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 0.02mm solid black;
+    box-sizing: border-box;
+    background-color: white;
+    background-image: var(--transform-icon-image);
+    background-size: 4.7mm;
+    background-position: center center;
+    background-repeat: no-repeat;
+    z-index: 3;
+}
+
+/* ------------------------ Extended Art Rendering ------------------------ */
+.rendering.extended-art .illustration {
+    width: calc(100% + 2mm * var(--renderMargin, 1) * var(--scale, 1));
+    background-size: calc(
+            var(--illustration-scale, 1) * (100% - 2mm * var(--renderMargin, 1) * var(--scale, 1))
+    );
+    background-position: calc(
+            var(--illustration-position-x, 0) + 1mm * var(--renderMargin, 1) * var(--scale, 1)
+    )
+    calc(var(--illustration-position-y, 0));
+    left: calc(-1mm * var(--renderMargin, 1) * var(--scale, 1));
+    right: calc(-1mm * var(--renderMargin, 1) * var(--scale, 1));
+}
+.rendering.full-art:not(.full-footer):not(.japanese-archive) .illustration {
+    width: calc(100% + 2mm * var(--renderMargin, 1) * var(--scale, 1));
+    height: calc(100% + 2mm * var(--renderMargin, 1) * var(--scale, 1));
+    background-size: calc(
+            var(--illustration-scale, 1) * (100% - 2mm * var(--renderMargin, 1) * var(--scale, 1))
+    );
+    background-position: calc(
+            var(--illustration-position-x, 0) + 1mm * var(--renderMargin, 1) * var(--scale, 1)
+    )
+    calc(
+            var(--illustration-position-y, 0) + 1mm * var(--renderMargin, 1) * var(--scale, 1)
+    );
+    top: calc(-1mm * var(--renderMargin, 1) * var(--scale, 1));
+    bottom: calc(-1mm * var(--renderMargin, 1) * var(--scale, 1));
+    left: calc(-1mm * var(--renderMargin, 1) * var(--scale, 1));
+    right: calc(-1mm * var(--renderMargin, 1) * var(--scale, 1));
+}
+
+/* ------------------------ Debug ------------------------ */
+.debug-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    width: 63.5mm;
+    height: 100%;
+    opacity: var(--debug-opacity, 0);
+}
+.debug-overlay:hover {
+    opacity: 1;
+}
+.debug-overlay > div {
+    overflow: hidden;
+    position: relative;
+    pointer-events: none;
+}
+.debug-overlay > div:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0.5px;
+    height: 100%;
+    background-color: #0008;
+}
+.debug-overlay > div > img {
+    width: 63.5mm;
+}
+.debug-controls {
+    position: absolute;
+    bottom: -4em;
+}
