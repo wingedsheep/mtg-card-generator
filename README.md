@@ -152,20 +152,12 @@ The card renderer supports:
 - Collector numbers
 - Artist credits
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Acknowledgments
 
 - Card rendering system based on [MTG Render](https://www.mtgrender.tk/) by Yoann 'Senryoku' Maret-Verdant
 - Magic: The Gathering is a trademark of Wizards of the Coast LLC
 - Card frame designs based on official MTG templates
-- AI art generation powered by Replicate
-- Card generation powered by OpenRouter
+- AI art generation powered by Replicate and Black Forest Labs
+- Card generation powered by OpenRouter and OpenAI
 
 Special thanks to Yoann 'Senryoku' Maret-Verdant for creating the original MTG card renderer ([GitHub](https://github.com/Senryoku)) which forms the foundation of our card rendering system.
