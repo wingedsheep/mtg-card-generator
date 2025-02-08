@@ -194,7 +194,9 @@ Generate {self.config.cards_per_batch} new cards with the following rarity distr
 - {self.config.commons_per_batch} Common
 
 Make sure that the cards in this batch are varied and different enough from the existing cards in the set.
-Make sure they supplement the existing cards well.
+Make sure they supplement the existing cards well, but also add diversity to the set.
+
+Make sure the set becomes well balanced in all regards.
 
 For each card, provide a complete description in this format:
 Card Name (Rarity)
