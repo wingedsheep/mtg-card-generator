@@ -120,7 +120,6 @@ if __name__ == "__main__":
         csv_file_path="./assets/mtg_cards_english.csv",
         inspiration_cards_count=50,
         batches_count=1,
-        cards_per_batch=13,
         mythics_per_batch=1,
         rares_per_batch=3,
         uncommons_per_batch=4,

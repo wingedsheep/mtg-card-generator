@@ -24,9 +24,9 @@ class MTGGeneratorOrchestrator:
 
         # Initialize components
         self.set_generator = MTGSetGenerator(config)
-        self.art_generator = MTGArtGenerator(config)
         self.json_converter = MTGJSONConverter()
         self.card_renderer = MTGCardRenderer(config)
+        # Art generator will be initialized after we have the theme
 
     def _load_api_tokens(self):
         """Load API tokens from settings.json and set environment variables."""
@@ -50,6 +50,9 @@ class MTGGeneratorOrchestrator:
         # Step 2: Generate art for all cards
         print("\n--- Generating Card Art ---")
         theme, cards = self._load_generated_cards()
+
+        # Initialize art generator with theme
+        self.art_generator = MTGArtGenerator(self.config, theme)
         cards_with_art = self.art_generator.process_cards(cards)
 
         # Step 3: Compile final data
@@ -136,7 +139,8 @@ class MTGGeneratorOrchestrator:
                 "generation_date": datetime.datetime.now().isoformat(),
                 "config": {
                     "inspiration_cards_count": self.config.inspiration_cards_count,
-                    "total_cards": self.config.batches_count * self.config.cards_per_batch,
+                    "total_cards": self.config.batches_count * (self.config.mythics_per_batch + self.config.rares_per_batch + self.config.uncommons_per_batch + self.config.commons_per_batch),
+                    "theme_prompt": self.config.theme_prompt,
                     "rarity_distribution": {
                         "mythic_per_batch": self.config.mythics_per_batch,
                         "rare_per_batch": self.config.rares_per_batch,
@@ -168,9 +172,11 @@ async def main():
     # Set configuration
     config = Config(
         csv_file_path="./assets/mtg_cards_english.csv",
-        inspiration_cards_count=100,  # Number of cards to use as inspiration
-        batches_count=20,  # Number of batches to generate, 20 batches gives you a full set of 260 cards
-        cards_per_batch=13,  # Cards per batch
+        inspiration_cards_count=50,  # Number of cards to use as inspiration
+        batches_count=20,  # Number of batches to generate
+
+        # Optional theme prompt to guide set generation
+        theme_prompt=None,
 
         # Rarity distribution per batch
         mythics_per_batch=1,

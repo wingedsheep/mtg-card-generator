@@ -9,9 +9,9 @@ class Config:
     csv_file_path: str = "./assets/mtg_cards_english.csv"
     inspiration_cards_count: int = 100
     batches_count: int = 20
-    cards_per_batch: int = 13
-    set_id: str = None  # New field for set identification
-    output_dir: Path = None  # New field for output directory
+    theme_prompt: Optional[str] = None
+    set_id: str = None
+    output_dir: Path = None
 
     # Rarity distribution per batch
     mythics_per_batch: int = 1
@@ -54,6 +54,7 @@ class Card:
     art_prompt: Optional[str] = None
     image_path: Optional[str] = None
     collector_number: Optional[str] = None
+    description: str = ""
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'Card':
@@ -71,7 +72,8 @@ class Card:
             set_name=data.get("set_name", ""),
             art_prompt=data.get("art_prompt"),
             image_path=data.get("image_path"),
-            collector_number=data.get("collector_number")
+            collector_number=data.get("collector_number"),
+            description=data.get("description", "")
         )
 
     def to_dict(self) -> Dict:
@@ -89,7 +91,8 @@ class Card:
             "set_name": self.set_name,
             "art_prompt": self.art_prompt,
             "image_path": self.image_path,
-            "collector_number": self.collector_number
+            "collector_number": self.collector_number,
+            "description": self.description
         }
 
     def __str__(self) -> str:

@@ -6,8 +6,9 @@ from models import Card, Config
 
 
 class MTGArtGenerator:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, theme: str = None):
         self.config = config
+        self.theme = theme
         self.client = self._initialize_client()
 
     def _initialize_client(self) -> OpenAI:
@@ -29,7 +30,15 @@ class MTGArtGenerator:
 
     def generate_art_prompt(self, card: Card, attempt: int = 0) -> str:
         """Generate an art prompt for a given card using OpenRouter."""
+        theme_context = f"""Set Theme Context:
+{self.theme}
+
+Consider this theme when creating the art prompt. The art should reflect both the card's individual characteristics and the overall set theme.""" if self.theme else ""
+
         prompt = f"""Create a detailed art prompt for a Magic: The Gathering card with the following details:
+
+Theme:
+{theme_context}
 
 Card Name: {card.name}
 Type: {card.type}
@@ -38,6 +47,7 @@ Card Text: {card.text}
 Flavor Text: {card.flavor}
 Colors: {', '.join(card.colors) if card.colors else 'Colorless'}
 Power/Toughness: {card.power}/{card.toughness} (if applicable)
+Description: {card.description}
 
 Make sure that the prompt fits the style of Magic: The Gathering art and captures the essence of the card.
 Say something about the composition, lighting, mood, and important details in the art prompt.
@@ -51,6 +61,9 @@ The description should be specific about composition, lighting, mood, and import
 Include details about the art style and technical aspects at the end.
 
 Create something unique, and add a touch of your own creativity to the prompt.
+
+If a character name is present, make sure to include their full name in the prompt.
+Make sure the prompt fits the theme context provided above.
 
 Example prompt: 
 

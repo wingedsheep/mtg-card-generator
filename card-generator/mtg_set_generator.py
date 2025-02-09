@@ -60,6 +60,7 @@ class MTGSetGenerator:
                 "X-Title": "MTG Set Generator"
             },
             model="openai/chatgpt-4o-latest",
+            temperature=1.0,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -69,25 +70,38 @@ class MTGSetGenerator:
 
     def _get_theme_prompt(self, inspiration_summary: str) -> str:
         """Get the prompt for set theme generation."""
-        return f"""Given the following Magic: The Gathering cards as inspiration:
+        base_prompt = f"""
+        Some inspirational cards. These cards are not in the set and not part of the theme. You can just use them to get a feel for the mechanics, types etc.:
+        {inspiration_summary}
+        
+        Create a detailed theme for a new Magic The Gathering set. Include:
+        1. Overall theme and setting (background story and world building)
+        2. Notable factions and characters in the set
+        3. Key locations and events
+        4. Any new mechanics or keywords (max 2) with a brief explanation. Mention that these should be explained on the cards.
+        4. Main mechanical themes and gameplay elements
+        5. Potential synergies between different card types and mechanics
+        6. How the theme supports different play styles
+        
+        Be as detailed as possible to create a rich and engaging world for the set.
+        
+        """
 
-{inspiration_summary}
+        # If a theme prompt is provided, incorporate it into the base prompt
+        if self.config.theme_prompt:
+            base_prompt = f"""Base the theme on the following prompt: {self.config.theme_prompt}
 
-Create a detailed theme for a new Magic: The Gathering set. Include:
-1. Overall theme and setting (background story and worldbuilding, remember to keep it original and true to magic the gathering lore)
-2. Main mechanical themes and gameplay elements
-3. How the five colors (White, Blue, Black, Red, Green) and optionally artifacts interact and their primary strategies
-4. Potential synergies between different card types and mechanics
-5. How the theme supports different play styles (aggro, control, midrange, combo)
-6. Creature types that are central to the set
+{base_prompt}"""
 
-The theme should be original while maintaining the core elements that make Magic engaging."""
+        base_prompt += "\n\nThe theme should be original while maintaining the core elements that make Magic engaging."
+
+        return base_prompt
 
     def convert_text_to_json(self, cards_text: str) -> List[Dict]:
         """Convert card text descriptions to JSON format."""
         prompt = f"""Convert the following Magic: The Gathering card descriptions into a JSON array.
 Each card should have the following fields: name, mana_cost, type, rarity, power (null if not creature), 
-toughness (null if not creature), text, flavor, colors (array of W, U, B, R, G or none if colorless).
+toughness (null if not creature), text, flavor, colors (array of W, U, B, R, G or none if colorless), description.
 
 Cards to convert:
 
@@ -158,59 +172,76 @@ Return only the JSON array with no additional text or explanation."""
         return cards_data
 
     def _get_batch_prompt(self, current_distribution: Dict[str, float]) -> str:
-        """Get the prompt for batch generation."""
-        all_context_cards = self.inspiration_cards + self.generated_cards
-        cards_text = "\n".join([
-            f"- {card.name} ({card.rarity}): {card.type} with {card.mana_cost}, {card.text}"
-            for card in all_context_cards
-        ])
-
+        """Get the prompt for batch generation with improved formatting and clarity."""
+        # Get inspiration cards formatted string
         inspiration_cards = "\n".join([
             f"- {card.name} ({card.rarity}): {card.type} with {card.mana_cost}, {card.text}"
             for card in self.inspiration_cards
         ])
 
-        return f"""Based on the following context for a Magic: The Gathering set:
-        
-Inspiration cards (not from this set):
-{inspiration_cards}
+        # Get existing cards formatted string
+        existing_cards = "\n".join([
+            f"- {card.name} ({card.rarity}): {card.type} with {card.mana_cost}, {card.text}"
+            for card in self.generated_cards
+        ])
 
-Theme:
-{self.set_theme}
+        cards_per_batch = self.config.mythics_per_batch + self.config.rares_per_batch + self.config.uncommons_per_batch + self.config.commons_per_batch
 
-Existing cards in the set:
-{cards_text}
+        return f"""Based on the following context for a Magic The Gathering set:
 
-Current color distribution:
-{json.dumps(current_distribution, indent=2)}
+    Some inspirational cards. Just use these for mechanics, types etc. These cards are not in the set and not part of the theme:
+    {inspiration_cards}
 
-Target color distribution:
-{json.dumps(self.config.color_distribution, indent=2)}
+    Theme:
+    {self.set_theme}
 
-Generate {self.config.cards_per_batch} new cards with the following rarity distribution:
-- {self.config.mythics_per_batch} Mythic Rare
-- {self.config.rares_per_batch} Rare
-- {self.config.uncommons_per_batch} Uncommon
-- {self.config.commons_per_batch} Common
+    Existing cards in the set:
+    {existing_cards}
 
-Make sure that the cards in this batch are varied and different enough from the existing cards in the set.
-Make sure they supplement the existing cards well, but also add diversity to the set.
+    Current color distribution:
+    {json.dumps(current_distribution, indent=2)}
 
-Make sure the set becomes well balanced in all regards, such as card types, and mechanics.
+    Target color distribution:
+    {{
+      "W": 0.2,
+      "U": 0.2,
+      "B": 0.2,
+      "R": 0.2,
+      "G": 0.2
+    }}
 
-For each card, provide a complete description in this format:
-Card Name (Rarity)
-Mana Cost: [cost]
-Type: [type]
-Power/Toughness: [P/T] (if creature)
-Rules Text: [text]
-Flavor Text: [flavor]
-Colors: [colors]
+    Instructions:
 
-Always include an explanation between ( ) for any new mechanics or keywords introduced.
-Well known mechanics like flying, haste, etc. do not need explanations.
+    - Create a batch of new cards that fit seamlessly into the theme, ensuring they are mechanically unique, thematically rich, and synergize well with the existing set.
+    - Make sure each batch has some memorable cards.
+    - Ensure that these cards are different enough from the cards already in the set. They should add to the variety and depth of the set.
+    - Think about already existing cards, and how the cards in this batch complement those cards.
+    - Cards in this batch are varied and different enough from the existing cards in the set.
+    - Try to keep card types in the set well-balanced.
+    - Make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
+    - ALWAYS include an explanation between for any new mechanics or keywords introduced in this set between brackets, or for less common mechanics.
+    Well known mechanics like flying, haste, etc. do not need explanations.
+    - Think about synergy in the set.
+    - Look at the rarity instructions.
 
-The cards should maintain color balance and have mechanical synergy with existing cards."""
+    First describe few unique characters or events for the theme that are not already in the existing cards (notable characters in theme is fine).
+    Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
+
+    Then generate {cards_per_batch} new cards, fitting the theme, with the following rarity distribution:
+    - {self.config.mythics_per_batch} Mythic Rare
+    - {self.config.rares_per_batch} Rare
+    - {self.config.uncommons_per_batch} Uncommon
+    - {self.config.commons_per_batch} Common
+
+    For each card, provide a complete description in this format:
+    Card Name (Rarity)
+    Mana Cost: [cost]
+    Type: [type]
+    Power/Toughness: [P/T] (if creature)
+    Rules Text: [text]
+    Flavor Text: [flavor]
+    Colors: [colors]
+    Description: [short lore + visual description]"""
 
     def generate_set(self) -> None:
         """Generate complete card set."""

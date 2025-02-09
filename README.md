@@ -125,7 +125,6 @@ You can modify the generation parameters in `main.py`:
 config = Config(
     inspiration_cards_count=50,  # Number of cards to use as inspiration
     batches_count=1,            # Number of batches to generate
-    cards_per_batch=4,          # Cards per batch
     mythics_per_batch=1,        # Mythic rares per batch
     rares_per_batch=1,          # Rares per batch
     uncommons_per_batch=1,      # Uncommons per batch
