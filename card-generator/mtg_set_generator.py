@@ -78,10 +78,10 @@ class MTGSetGenerator:
         1. Overall theme and setting (background story and world building)
         2. Notable factions and characters in the set
         3. Key locations and events
-        4. Any new mechanics or keywords (max 2) with a brief explanation. Mention that these should be explained on the cards.
-        4. Main mechanical themes and gameplay elements
-        5. Potential synergies between different card types and mechanics
-        6. How the theme supports different play styles
+        4. Any new mechanics or keywords (0 to 2) with an explanation. Mention in the theme text that these should always be explained on the cards. Make sure they actually make sense in the game.
+        5. Main mechanical themes and gameplay elements
+        6. Potential synergies between different card types and mechanics
+        7. How the theme supports different play styles
         
         Be as detailed as possible to create a rich and engaging world for the set.
         
@@ -194,6 +194,31 @@ Return only the JSON array with no additional text or explanation."""
 
     Theme:
     {self.set_theme}
+        
+    # Card Rarity Guidelines
+    
+    ## Common
+    - Simple, vanilla effects that work in multiples
+    - Basic creatures and spells
+    - Usually clean, short rules text, or no rules at all
+    - Foundation of gameplay mechanics
+    
+    ## Uncommon
+    - Moderately complex abilities
+    - Support for specific strategies
+    - Clear synergies with other cards
+    
+    ## Rare
+    - Format-defining effects
+    - Important characters or spells
+    - Unique mechanics
+    - Can shape deck strategies
+    
+    ## Mythic Rare
+    - Game-changing effects
+    - Major characters
+    - Splashy, memorable designs
+    - Build-around centerpieces
 
     Existing cards in the set:
     {existing_cards}
