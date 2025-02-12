@@ -80,12 +80,11 @@ class MTGCardRenderer:
                         # Get the original bounding box of the element
                         box = await card_element.bounding_box()
                         if box:
-                            # Adjust the bounding box to account for the CSS scale transform (scale factor of 4)
                             clip_region = {
                                 "x": box["x"],
                                 "y": box["y"],
-                                "width": box["width"] * 4,
-                                "height": box["height"] * 4,
+                                "width": box["width"],
+                                "height": box["height"],
                             }
                             await page.screenshot(
                                 path=str(output_path),

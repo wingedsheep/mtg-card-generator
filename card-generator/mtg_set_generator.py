@@ -257,6 +257,8 @@ Return only the JSON array with no additional text or explanation."""
     - {self.config.rares_per_batch} Rare
     - {self.config.uncommons_per_batch} Uncommon
     - {self.config.commons_per_batch} Common
+    
+    Output all the cards in one go. Don't stop until you output all {cards_per_batch} cards! This is crucial.
 
     For each card, provide a complete description in this format:
     Card Name (Rarity)
