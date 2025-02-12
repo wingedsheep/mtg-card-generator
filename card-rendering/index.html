@@ -1,47 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Magic Card Renderer</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Include html-to-image from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js"></script>
+  <meta charset="UTF-8">
+  <title>Magic Card Renderer</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Include html-to-image from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js"></script>
 </head>
 <body>
-<h1>Magic Card Renderer</h1>
-<p>Paste your card JSON below, then click "Render Card" to display it and "Download as PNG" to save an image.</p>
-<label for="card-json"></label>
-<textarea id="card-json" rows="10" cols="50" placeholder="Paste card JSON here..."></textarea>
-<br>
-<button id="render-button">Render Card</button>
-<button id="download-button" onclick="downloadCard()">Download as PNG</button>
-<hr>
-<div id="card-container">
-    <!-- Your card content will be rendered here -->
-</div>
+  <h1>Magic Card Renderer</h1>
+  <p>Paste your card JSON below, then click "Render Card" to display it and "Download as PNG" to save an image.</p>
+  <textarea id="card-json" rows="10" cols="50" placeholder="Paste card JSON here..."></textarea>
+  <br>
+  <button id="render-button">Render Card</button>
+  <button id="download-button" onclick="downloadCard()">Download as PNG</button>
+  <hr>
+  <div id="card-container"></div>
 
-<!-- Include your script file -->
-<script src="script.js"></script>
-<script>
+  <!-- Include helper classes first -->
+  <script src="helpers.js"></script>
+  <!-- Then include the main script -->
+  <script src="script.js"></script>
+  <script>
     function downloadCard() {
-        const node = document.getElementsByClassName('mtg-card')[0];
-
-        htmlToImage.toPng(node, {
-            quality: 1.0,
-            pixelRatio: 4,
-            skipAutoScale: true
-        })
-            .then(function(dataUrl) {
-                const link = document.createElement('a');
-                link.download = 'mtg-card.png';
-                link.href = dataUrl;
-                link.click();
-            })
-            .catch(function(error) {
-                console.error('Error generating PNG:', error);
-                alert('Error generating PNG. Please try again.');
-            });
+      const node = document.getElementsByClassName('mtg-card')[0];
+      htmlToImage.toPng(node, {
+        quality: 1.0,
+        pixelRatio: 4,
+        skipAutoScale: true
+      })
+      .then(function(dataUrl) {
+        const link = document.createElement('a');
+        link.download = 'mtg-card.png';
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch(function(error) {
+        console.error('Error generating PNG:', error);
+        alert('Error generating PNG. Please try again.');
+      });
     }
-</script>
+  </script>
 </body>
 </html>
