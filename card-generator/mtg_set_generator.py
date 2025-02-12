@@ -75,10 +75,10 @@ class MTGSetGenerator:
         {inspiration_summary}
         
         Create a detailed theme for a new Magic The Gathering set. Include:
-        1. Overall theme and setting (background story and world building)
-        2. Notable factions and characters in the set
-        3. Key locations and events
-        4. Any new mechanics or keywords (0 to 2) with an explanation. Mention in the theme text that these should always be explained on the cards. Make sure they actually make sense in the game.
+        1. Notable factions and characters in the set
+        2. History and lore of the world
+        3. Key locations and events, themes of the set
+        4. A list of creature types that appear in the set
         5. Main mechanical themes and gameplay elements
         6. Potential synergies between different card types and mechanics
         7. How the theme supports different play styles
@@ -199,7 +199,7 @@ Return only the JSON array with no additional text or explanation."""
     
     ## Common
     - Simple, vanilla effects that work in multiples
-    - Basic creatures and spells
+    - Basic creature types and spells
     - Usually clean, short rules text, or no rules at all
     - Foundation of gameplay mechanics
     
@@ -237,7 +237,8 @@ Return only the JSON array with no additional text or explanation."""
 
     Instructions:
 
-    - Create a batch of new cards that fit seamlessly into the theme, ensuring they are mechanically unique, thematically rich, and synergize well with the existing set.
+    - Create a batch of new cards that fit into the theme of the set.
+    - Think of how this batch adds to the existing cards in the set.
     - Make sure each batch has some memorable cards.
     - Ensure that these cards are different enough from the cards already in the set. They should add to the variety and depth of the set.
     - Think about already existing cards, and how the cards in this batch complement those cards.
@@ -259,6 +260,7 @@ Return only the JSON array with no additional text or explanation."""
     - {self.config.commons_per_batch} Common
     
     Output all the cards in one go. Don't stop until you output all {cards_per_batch} cards! This is crucial.
+    Don't output fewer than {cards_per_batch} cards. If you do, the batch will be considered incomplete.
 
     For each card, provide a complete description in this format:
     Card Name (Rarity)

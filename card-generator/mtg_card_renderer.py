@@ -58,7 +58,7 @@ class MTGCardRenderer:
                         () => {
                             const card = document.querySelector('.mtg-card');
                             if (card) {
-                                card.style.transform = 'scale(4)';
+                                card.style.transform = 'scale(2)';
                                 card.style.transformOrigin = 'top left';
                             }
                         }
