@@ -24,21 +24,27 @@
   <script>
     function downloadCard() {
       const node = document.getElementsByClassName('mtg-card')[0];
+
+      // Get the bounding box of the element
+      const box = node.getBoundingClientRect();
+
       htmlToImage.toPng(node, {
         quality: 1.0,
-        pixelRatio: 4,
+        width: box.width,     // Use scaled width
+        height: box.height,   // Use scaled height
+        pixelRatio: 1,
         skipAutoScale: true
       })
-      .then(function(dataUrl) {
-        const link = document.createElement('a');
-        link.download = 'mtg-card.png';
-        link.href = dataUrl;
-        link.click();
-      })
-      .catch(function(error) {
-        console.error('Error generating PNG:', error);
-        alert('Error generating PNG. Please try again.');
-      });
+              .then(function(dataUrl) {
+                const link = document.createElement('a');
+                link.download = 'mtg-card.png';
+                link.href = dataUrl;
+                link.click();
+              })
+              .catch(function(error) {
+                console.error('Error generating PNG:', error);
+                alert('Error generating PNG. Please try again.');
+              });
     }
   </script>
 </body>
