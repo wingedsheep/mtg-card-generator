@@ -49,6 +49,8 @@ Colors: {', '.join(card.colors) if card.colors else 'Colorless'}
 Power/Toughness: {card.power}/{card.toughness} (if applicable)
 Description: {card.description}
 
+Look at all the details of the card, like the type, rarity, card text, flavor text, colors, and power/toughness when creating the art prompt.
+
 Make sure that the prompt fits the style of Magic: The Gathering art and captures the essence of the card.
 Say something about the composition, lighting, mood, and important details in the art prompt.
 

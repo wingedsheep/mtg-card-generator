@@ -321,7 +321,7 @@ Return only the JSON array with no additional text or explanation."""
         - Think about the color distribution analysis above and prioritize underrepresented colors.
         - Try to keep card types in the set well-balanced. Also, make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
         - Make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
-        - ALWAYS include an explanation between for any new mechanics or keywords introduced in this set between brackets, or for less common mechanics.
+        - ALWAYS include an explanation between brackets for less common mechanics.
         Well known mechanics like flying, haste, etc. do not need explanations.
         - Think about synergy in the set.
         - Look at the rarity instructions.

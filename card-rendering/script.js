@@ -48,7 +48,7 @@ function resizeOracleText(oracle, cardEl, needsSpace) {
   const boxWidth = oracle.clientWidth;
 
   // Reduce font size until content fits
-  while ((oracle.scrollHeight > boxHeight || oracle.scrollWidth > boxWidth) && fontSize > 0.7) {
+  while ((oracle.scrollHeight > boxHeight || oracle.scrollWidth > boxWidth) && fontSize > 0.6) {
     fontSize -= 0.05;
     oracle.style.fontSize = `${fontSize}em`;
   }
