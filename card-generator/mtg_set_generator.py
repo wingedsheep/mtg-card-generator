@@ -75,13 +75,12 @@ class MTGSetGenerator:
         {inspiration_summary}
         
         Create a detailed theme for a new Magic The Gathering set. Include:
-        1. Notable factions and characters in the set
-        2. History and lore of the world
-        3. Key locations and events, themes of the set
-        4. A list of creature types that appear in the set
-        5. Main mechanical themes and gameplay elements
-        6. Potential synergies between different card types and mechanics
-        7. How the theme supports different play styles
+        1. Detailed history and lore of the set, including notable characters and events
+        2. Key locations and events, themes of the set
+        3. A list of creature types that appear in the set (not all, just the most common ones)
+        4. Main mechanical themes and gameplay elements. No new mechanics, unless prompted by the user.
+        5. Potential synergies between different card types and mechanics
+        6. How the theme supports different play styles
         
         Be as detailed as possible to create a rich and engaging world for the set.
         
@@ -135,7 +134,7 @@ Return only the JSON array with no additional text or explanation."""
             raise
 
     def generate_batch(self, batch_number: int) -> List[Dict]:
-        """Generate a batch of cards using OpenRouter API."""
+        """Generate a batch of cards using OpenRouter API with simple continuation handling."""
         print(f"\nGenerating batch {batch_number}/{self.config.batches_count}...")
 
         # Calculate current color distribution
@@ -151,7 +150,15 @@ Return only the JSON array with no additional text or explanation."""
             for color, count in color_counts.items()
         }
 
-        # Generate cards
+        # Calculate expected total cards for this batch
+        expected_cards = (
+                self.config.mythics_per_batch +
+                self.config.rares_per_batch +
+                self.config.uncommons_per_batch +
+                self.config.commons_per_batch
+        )
+
+        # Initial generation attempt
         cards_text = self._get_batch_prompt(current_distribution)
         completion = self.client.chat.completions.create(
             extra_headers={
@@ -162,12 +169,46 @@ Return only the JSON array with no additional text or explanation."""
             messages=[{"role": "user", "content": cards_text}]
         )
 
-        cards_data = self.convert_text_to_json(completion.choices[0].message.content)
+        initial_response = completion.choices[0].message.content
+        try:
+            cards_data = self.convert_text_to_json(initial_response)
+        except Exception as e:
+            print(f"Error in initial JSON conversion: {e}")
+            cards_data = []
+
+        # If we don't have enough cards, try a simple continuation
+        if len(cards_data) < expected_cards:
+            print(f"Generated {len(cards_data)} cards, expected {expected_cards}. Attempting continuation...")
+
+            # Simple continuation request
+            continuation = self.client.chat.completions.create(
+                extra_headers={
+                    "HTTP-Referer": "https://example.com",
+                    "X-Title": "MTG Set Generator"
+                },
+                model="openai/chatgpt-4o-latest",
+                messages=[
+                    {"role": "user", "content": cards_text},
+                    {"role": "assistant", "content": initial_response},
+                    {"role": "user", "content": "continue with the remaining " + str(expected_cards - len(cards_data)) + " cards"}
+                ]
+            )
+
+            try:
+                additional_cards = self.convert_text_to_json(continuation.choices[0].message.content)
+                cards_data.extend(additional_cards)
+                print(f"Added {len(additional_cards)} cards through continuation")
+            except Exception as e:
+                print(f"Error in continuation JSON conversion: {e}")
 
         # Add collector numbers
         for card_data in cards_data:
             card_data["collector_number"] = str(self.collector_number_counter)
             self.collector_number_counter += 1
+
+        # Final check
+        if len(cards_data) != expected_cards:
+            print(f"Warning: Generated {len(cards_data)} cards, expected {expected_cards}")
 
         return cards_data
 
@@ -258,9 +299,6 @@ Return only the JSON array with no additional text or explanation."""
     - {self.config.rares_per_batch} Rare
     - {self.config.uncommons_per_batch} Uncommon
     - {self.config.commons_per_batch} Common
-    
-    Output all the cards in one go. Don't stop until you output all {cards_per_batch} cards! This is crucial.
-    Don't output fewer than {cards_per_batch} cards. If you do, the batch will be considered incomplete.
 
     For each card, provide a complete description in this format:
     Card Name (Rarity)
