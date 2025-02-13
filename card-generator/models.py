@@ -50,6 +50,7 @@ class Card:
     colors: List[str]
     power: Optional[str] = None
     toughness: Optional[str] = None
+    authority: Optional[str] = None
     set_name: str = ""
     art_prompt: Optional[str] = None
     image_path: Optional[str] = None
@@ -66,6 +67,7 @@ class Card:
             rarity=data.get("rarity", ""),
             power=data.get("power", None),
             toughness=data.get("toughness", None),
+            authority=data.get("authority", None),
             text=data.get("text", ""),
             flavor=data.get("flavor", ""),
             colors=data.get("colors", []),
@@ -85,6 +87,7 @@ class Card:
             "rarity": self.rarity,
             "power": self.power,
             "toughness": self.toughness,
+            "authority": self.authority,
             "text": self.text,
             "flavor": self.flavor,
             "colors": self.colors,

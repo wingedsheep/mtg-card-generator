@@ -343,6 +343,7 @@ Return only the JSON array with no additional text or explanation."""
         Mana Cost: [cost]
         Type: [type]
         Power/Toughness: [P/T] (if creature)
+        Authority: [authority] (if planeswalker)
         Rules Text: [text]
         Flavor Text: [flavor]
         Colors: [colors]

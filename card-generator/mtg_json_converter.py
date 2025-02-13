@@ -175,48 +175,49 @@ class MTGJSONConverter:
 
         prompt = f"""Convert the following MTG card data to the rendering format following these rules:
 
-# Valid Color Values (based on file structure)
-Single colors: W, U, B, R, G
-Dual colors: WU, WB, WR, WG, UB, UR, UG, BR, BG, RG
-Special types: Artifact, Vehicle, Land, Gold
-Icon values: 0, 1, 2, 2B, 2G, 2R, 2U, 2W, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 100, 1000000, A, B, BG, BGP, BP, BR, BRP, C, CB, CG, CHAOS, CP, CR, CU, CW, D, E, G, GP, GU, GUP, GW, GWP, H, HALF, HR, HW, INFINITY, L, P, PW, Q, R, RG, RGP, RP, RW, RWP, S, T, TK, U, UB, UBP, UP, UR, URP, W, WB, WBP, WP, WU, WUP, X, Y, Z
-
-# Transformation Rules
-1. Use the image_path from input, but prepend "../card-generator/" to the path
-2. Convert colors from individual letters to paired format (e.g., ["G", "W"] becomes ["WG"])
-3. Set 'layout' to "normal"
-4. Set 'set' to "thb"
-5. Set 'artist' to "Vincent Bons"
-6. Convert all power/toughness values to strings, when they exist. Otherwise don't include them
-7. Replace "—" with "-" in type_line
-8. Add double newlines between separate rules in oracle_text
-9. Include the collector_number from the input exactly as provided
-10. Convert the card text to oracle_text, handling line breaks and quotes properly
-11. Convert type to type_line
-12. Convert flavor to flavor_text (when present)
-13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
-
-Here are some examples:
-
-Example 1:
-Input: {json.dumps(example_pairs[0]["input"], indent=2)}
-
-Output: {json.dumps(example_pairs[0]["output"], indent=2)}
-
-Example 2:
-Input: {json.dumps(example_pairs[1]["input"], indent=2)}
-
-Output: {json.dumps(example_pairs[1]["output"], indent=2)}
-
-Example 3:
-Input: {json.dumps(example_pairs[2]["input"], indent=2)}
-
-Output: {json.dumps(example_pairs[2]["output"], indent=2)}
-
-Now convert this card data to the same format:
-{json.dumps(card_data, indent=2)}
-
-Return only the JSON object with no additional text."""
+        # Valid Color Values (based on file structure)
+        Single colors: W, U, B, R, G
+        Dual colors: WU, WB, WR, WG, UB, UR, UG, BR, BG, RG
+        Special types: Artifact, Vehicle, Land, Gold
+        Icon values: 0, 1, 2, 2B, 2G, 2R, 2U, 2W, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 100, 1000000, A, B, BG, BGP, BP, BR, BRP, C, CB, CG, CHAOS, CP, CR, CU, CW, D, E, G, GP, GU, GUP, GW, GWP, H, HALF, HR, HW, INFINITY, L, P, PW, Q, R, RG, RGP, RP, RW, RWP, S, T, TK, U, UB, UBP, UP, UR, URP, W, WB, WBP, WP, WU, WUP, X, Y, Z
+        
+        # Transformation Rules
+        1. Use the image_path from input, but prepend "../card-generator/" to the path
+        2. Convert colors from individual letters to paired format (e.g., ["G", "W"] becomes ["WG"])
+        3. Set 'layout' to "normal"
+        4. Set 'set' to "thb"
+        5. Set 'artist' to "Vincent Bons"
+        6. Convert all power/toughness values to strings, when they exist. Otherwise don't include them
+        7. Replace "—" with "-" in type_line
+        8. Add double newlines between separate rules in oracle_text
+        9. Include the collector_number from the input exactly as provided
+        10. Convert the card text to oracle_text, handling line breaks and quotes properly
+        11. Convert type to type_line
+        12. Convert flavor to flavor_text (when present)
+        13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
+        14. Add authority for Planeswalker cards
+        
+        Here are some examples:
+        
+        Example 1:
+        Input: {json.dumps(example_pairs[0]["input"], indent=2)}
+        
+        Output: {json.dumps(example_pairs[0]["output"], indent=2)}
+        
+        Example 2:
+        Input: {json.dumps(example_pairs[1]["input"], indent=2)}
+        
+        Output: {json.dumps(example_pairs[1]["output"], indent=2)}
+        
+        Example 3:
+        Input: {json.dumps(example_pairs[2]["input"], indent=2)}
+        
+        Output: {json.dumps(example_pairs[2]["output"], indent=2)}
+        
+        Now convert this card data to the same format:
+        {json.dumps(card_data, indent=2)}
+        
+        Return only the JSON object with no additional text."""
 
         return prompt
 
