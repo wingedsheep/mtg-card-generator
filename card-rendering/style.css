@@ -394,8 +394,7 @@
   width: 53.8mm;
   height: 26mm;
   margin: auto;
-  padding: 1mm;
-  padding-bottom: 4mm;
+  padding: 1mm 1mm 1.5mm 1mm;
   box-sizing: border-box;
 }
 .oracle > div {

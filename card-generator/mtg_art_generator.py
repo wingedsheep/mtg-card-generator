@@ -52,8 +52,7 @@ Description: {card.description}
 Make sure that the prompt fits the style of Magic: The Gathering art and captures the essence of the card.
 Say something about the composition, lighting, mood, and important details in the art prompt.
 
-Don't include words that could trigger the NSFW filters.
-{f"Please make sure it is a really SAFE prompt! This is crucial." if attempt > 1 else ""}
+{f"Please make sure it is a really SAFE prompt! Don't include words that could trigger the NSFW filters. This is crucial." if attempt > 1 else ""} 
 
 The prompt should begin with "Oil on canvas painting. Magic the gathering art. Rough brushstrokes."
 Focus on creating a vivid, detailed scene that captures the essence of the card's mechanics and flavor.
@@ -68,6 +67,7 @@ Make sure the prompt fits the theme context provided above.
 Example prompt: 
 
 ``` 
+Example 1:
 Oil on canvas painting. Magic the gathering art. Rough brushstrokes. A wild-eyed goblin wizard perches atop a 
 rock formation in his cave laboratory. His unkempt red hair stands on end, burning at the tips with magical fire that 
 doesn't harm him. Red mana crackles like lightning around his hands, and his tattered robes smoke from magical 
@@ -75,8 +75,16 @@ mishaps. Behind him, a contraption of copper pipes, glass tubes, and crystals sp
 scrolls float around him as he grins with manic glee, his experiment spiraling out of control. The cave walls reflect 
 orange-red firelight, and burnt artifacts litter the ground. Small explosions pop like magical fireworks in the 
 background. Crisp details emphasize the chaotic energy and magical power, particularly in the interplay of fire and 
-magical effects. Wizard. 
+magical effects. Wizard. Oil on canvas artwork.
+
+Example 2: Oil on canvas painting. Magic the gathering art. Rough brushstrokes. Ancient forest grove bathed in 
+emerald light. Massive moss-covered tree roots form archways over clear pools. Glowing white flowers spiral across 
+the forest floor. Ethereal mist and crystal formations weave between towering trunks. Oil on canvas with rough 
+brushstrokes, Magic: The Gathering style. Emphasis on natural patterns and dappled light through the canopy. Oil on 
+canvas artwork. 
 ``` 
+
+{f"Don't put any words in the prompt that might be considered harmful by anyone. Make it really safe!" if attempt > 4 else ""}
 
 Return only the prompt text with no additional explanation."""
 
@@ -130,8 +138,9 @@ Return only the prompt text with no additional explanation."""
                     "black-forest-labs/flux-1.1-pro",
                     input={
                         "prompt": art_prompt,
-                        "width": 1024,
-                        "height": 683,  # 3:2 aspect ratio
+                        "aspect_ratio": "5:4",
+                        "safety_tolerance": 6,
+                        "prompt_upsampling": True
                     }
                 )
 
@@ -140,7 +149,7 @@ Return only the prompt text with no additional explanation."""
             except Exception as e:
                 if attempt == max_retries - 1:  # Last attempt
                     print(f"Failed to generate art after {max_retries} attempts: {str(e)}")
-                    raise  # Re-raise the last exception
+                    return "", b""
                 else:
                     print(f"Attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)

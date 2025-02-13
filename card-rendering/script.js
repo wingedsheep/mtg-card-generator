@@ -20,19 +20,6 @@ function parseOracle(str) {
 }
 
 /**
- * Resizes text horizontally until it fits within its container.
- */
-function resizeTextHorizontally(el) {
-  const computedStyle = window.getComputedStyle(el);
-  let fontSize = parseFloat(computedStyle.fontSize);
-  el.style.fontSize = fontSize + "px";
-  while (el.scrollWidth > el.clientWidth && fontSize > 4) {
-    fontSize -= 0.5;
-    el.style.fontSize = fontSize + "px";
-  }
-}
-
-/**
  * Helper function that returns true if the given string contains
  * any of the search terms (case insensitive).
  */
@@ -41,6 +28,131 @@ function contains(str, search) {
   if (Array.isArray(search))
     return search.some(s => str.toLowerCase().includes(s.toLowerCase()));
   return str.toLowerCase().includes(search.toLowerCase());
+}
+
+/* =======================================================
+ * Text Resizing Functions
+ * =======================================================
+ */
+
+/**
+ * Resizes oracle text to fit within its container.
+ */
+function resizeOracleText(oracle, cardEl, needsSpace) {
+  // Start with a reasonable font size
+  let fontSize = 1.0;
+  oracle.style.fontSize = `${fontSize}em`;
+
+  // Get container dimensions
+  const boxHeight = oracle.clientHeight;
+  const boxWidth = oracle.clientWidth;
+
+  // Reduce font size until content fits
+  while ((oracle.scrollHeight > boxHeight || oracle.scrollWidth > boxWidth) && fontSize > 0.7) {
+    fontSize -= 0.05;
+    oracle.style.fontSize = `${fontSize}em`;
+  }
+
+  // If we need space for P/T box, reduce slightly more
+  if (needsSpace && oracle.scrollHeight > boxHeight * 0.9) {
+    fontSize *= 0.95;
+    oracle.style.fontSize = `${fontSize}em`;
+  }
+}
+
+/**
+ * Creates and sets up observers for text resizing.
+ * This version ensures proper initial sizing and subsequent updates.
+ */
+function setupTextResizing(cardEl, props) {
+  // Create a function to handle initial setup once the DOM is ready
+  const setupElements = () => {
+    // Resize card name
+    const nameEl = cardEl.querySelector('.name');
+    if (nameEl) {
+      const nameResizeObserver = new ResizeObserver(() => {
+        resizeTextHorizontally(nameEl);
+      });
+      nameResizeObserver.observe(nameEl);
+      // Initial resize
+      resizeTextHorizontally(nameEl);
+
+      // Also observe for content changes
+      const nameObserver = new MutationObserver(() => resizeTextHorizontally(nameEl));
+      nameObserver.observe(nameEl, { childList: true, subtree: true, characterData: true });
+    }
+
+    // Resize type line
+    const typeLineEl = cardEl.querySelector('.type-line');
+    if (typeLineEl) {
+      const typeLineResizeObserver = new ResizeObserver(() => {
+        resizeTextHorizontally(typeLineEl);
+      });
+      typeLineResizeObserver.observe(typeLineEl);
+      // Initial resize
+      resizeTextHorizontally(typeLineEl);
+
+      // Also observe for content changes
+      const typeLineObserver = new MutationObserver(() => resizeTextHorizontally(typeLineEl));
+      typeLineObserver.observe(typeLineEl, { childList: true, subtree: true, characterData: true });
+    }
+
+    // Handle oracle text
+    if (!props.is_planeswalker) {
+      const oracle = cardEl.querySelector('.oracle');
+      if (oracle) {
+        // Check if card needs bottom space
+        const needsSpace = props.card_face.power !== undefined &&
+            props.card_face.toughness !== undefined;
+
+        const oracleResizeObserver = new ResizeObserver(() => {
+          resizeOracleText(oracle, cardEl, needsSpace);
+        });
+        oracleResizeObserver.observe(oracle);
+        // Initial resize
+        resizeOracleText(oracle, cardEl, needsSpace);
+
+        // Also observe for content changes
+        const oracleObserver = new MutationObserver(() =>
+            resizeOracleText(oracle, cardEl, needsSpace)
+        );
+        oracleObserver.observe(oracle, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+    }
+  };
+
+  // Ensure elements are in DOM before setting up observers
+  if (document.readyState === 'complete') {
+    setupElements();
+  } else {
+    // Wait for DOM to be ready
+    window.addEventListener('load', setupElements);
+  }
+}
+
+/**
+ * Resizes text horizontally until it fits within its container.
+ * @param {HTMLElement} el - The element to resize
+ */
+function resizeTextHorizontally(el) {
+  // Force a reflow to ensure we have correct dimensions
+  void el.offsetHeight;
+
+  const computedStyle = window.getComputedStyle(el);
+  let fontSize = parseFloat(computedStyle.fontSize);
+  el.style.fontSize = fontSize + "px";
+
+  // Add a small delay to ensure styles are applied
+  setTimeout(() => {
+    while (el.scrollWidth > el.clientWidth && fontSize > 4) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + "px";
+    }
+  }, 0);
 }
 
 /* =======================================================
@@ -176,24 +288,52 @@ function computeCardProps(card, currentFace = 0) {
     card.copyright || `™ & © ${new Date().getFullYear()} Wizards of the Coast`;
 
   // Compute colors.
-  function computeColors(face) {
+  function computeColors(face, card) {
+    // Determine base colors
     let colors;
     if (face.colors && face.colors.length > 0) colors = face.colors;
     else if (face.color_identity) colors = face.color_identity;
     else if (face.mana_cost) colors = Array.from(face.mana_cost).filter(c => "WUBRG".includes(c));
     else colors = [];
-    if (colors.length === 0 && card.color_identity && card.color_identity.length > 0)
+
+    // Fall back to card color identity if no colors found
+    if (colors.length === 0 && card.color_identity && card.color_identity.length > 0) {
       colors = card.color_identity;
-    let sorted_colors = [...new Set(colors)]
-      .sort((l, r) => "WUBRG".indexOf(l) - "WUBRG".indexOf(r))
-      .join("");
-    return contains(face.type_line, ["Artifact", "Artefact", "Artéfact"])
-      ? "Artifact"
-      : sorted_colors.length === 0
-        ? "Colourless"
-        : sorted_colors.length > 2
-          ? "Gold"
-          : sorted_colors;
+    }
+
+    // Remove duplicates and get unique colors
+    let uniqueColors = [...new Set(colors)];
+
+    // Sort colors based on WUBRG order
+    let sorted_colors = uniqueColors.sort((l, r) => "WUBRG".indexOf(l) - "WUBRG".indexOf(r));
+
+    // Convert to string
+    let colorString = sorted_colors.join("");
+
+    // Special cases
+    if (contains(face.type_line, ["Artifact", "Artefact", "Artéfact"])) {
+      return "Artifact";
+    }
+
+    if (colorString.length === 0) {
+      return "Colourless";
+    }
+
+    if (colorString.length > 2) {
+      return "Gold";
+    }
+
+    // For exactly 2 colors, ensure WUBRG order
+    if (colorString.length === 2) {
+      const firstIndex = "WUBRG".indexOf(colorString[0]);
+      const secondIndex = "WUBRG".indexOf(colorString[1]);
+      if (firstIndex > secondIndex) {
+        // Swap the characters if they're in the wrong order
+        colorString = colorString[1] + colorString[0];
+      }
+    }
+
+    return colorString;
   }
   props.colors = computeColors(props.card_face);
 
@@ -473,10 +613,9 @@ function createMTGCard(card, scale = 1, renderMargin = 1) {
   const cardEl = document.createElement("div");
   cardEl.className = "mtg-card";
 
-  // Add special classes for planeswalker and legendary cards.
+  // Add special classes for planeswalker and legendary cards
   if (props.is_planeswalker) {
     cardEl.classList.add("planeswalker");
-    // For planeswalkers, add a "large" class if there are more than 3 abilities.
     if (props.is_large_planeswalker) {
       cardEl.classList.add("planeswalker-large");
     }
@@ -485,15 +624,15 @@ function createMTGCard(card, scale = 1, renderMargin = 1) {
     cardEl.classList.add("legendary");
   }
 
-  // Set CSS custom properties.
+  // Set CSS custom properties
   setCardStyles(cardEl, props, scale, renderMargin);
 
-  // Build inner HTML based on whether the card is a planeswalker.
+  // Build inner HTML based on whether the card is a planeswalker
   cardEl.innerHTML = props.is_planeswalker
-    ? buildPlaneswalkerCardHTML(props, card)
-    : buildDefaultCardHTML(props, card);
+      ? buildPlaneswalkerCardHTML(props, card)
+      : buildDefaultCardHTML(props, card);
 
-  // Set illustration background on the appropriate element.
+  // Set illustration background
   const illustrationDiv = cardEl.querySelector(".illustration, .illustration.behind-textbox");
   if (illustrationDiv) {
     illustrationDiv.style.backgroundImage = props.illustration;
@@ -502,41 +641,8 @@ function createMTGCard(card, scale = 1, renderMargin = 1) {
     illustrationDiv.style.backgroundRepeat = "no-repeat";
   }
 
-  // Resize text for the card name.
-  const nameEl = cardEl.querySelector('.name');
-  if (nameEl) {
-    resizeTextHorizontally(nameEl);
-    const nameObserver = new MutationObserver(() => resizeTextHorizontally(nameEl));
-    nameObserver.observe(nameEl, { childList: true, subtree: true, characterData: true });
-  }
-  // Resize text for the type line.
-  const typeLineEl = cardEl.querySelector('.type-line');
-  if (typeLineEl) {
-    resizeTextHorizontally(typeLineEl);
-    const typeLineObserver = new MutationObserver(() => resizeTextHorizontally(typeLineEl));
-    typeLineObserver.observe(typeLineEl, { childList: true, subtree: true, characterData: true });
-  }
-
-  // For non-planeswalker cards, adjust the oracle text size vertically if needed.
-  if (!props.is_planeswalker) {
-    const oracle = cardEl.querySelector('.oracle');
-    if (oracle) {
-      let fontSize = 1; // initial em value
-      oracle.style.fontSize = `${fontSize}em`;
-      const resizeOracleText = () => {
-        oracle.style.fontSize = `${fontSize}em`;
-        while (oracle.scrollHeight > oracle.clientHeight && fontSize > 0.5) {
-          fontSize -= 0.05;
-          oracle.style.fontSize = `${fontSize}em`;
-        }
-      };
-      resizeOracleText();
-      const oracleObserver = new MutationObserver(resizeOracleText);
-      oracleObserver.observe(oracle, { childList: true, subtree: true, characterData: true });
-      const oracleResizeObserver = new ResizeObserver(resizeOracleText);
-      oracleResizeObserver.observe(cardEl);
-    }
-  }
+  // Set up all text resizing with the new unified function
+  setupTextResizing(cardEl, props);
 
   return cardEl;
 }

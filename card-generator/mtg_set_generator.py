@@ -76,12 +76,13 @@ class MTGSetGenerator:
         
         Create a detailed theme for a new Magic The Gathering set. Include:
         1. Detailed history and lore of the set, including notable characters/creatures and events
-        2. Key locations and events, themes of the set
-        3. A list of creature types that appear in the set (not all, just the most common ones)
-        4. Main mechanical themes and gameplay elements. No new mechanics, unless prompted by the user.
+        2. Key factions, locations, events that are a part of this set
+        3. A list of creature types that appear in the set (not all, just some examples in the set)
+        4. Main mechanical themes and gameplay elements. Don't introduce new mechanics here, just describe how they are used in the set.
         5. Potential synergies between different card types and mechanics
         6. How the theme supports different play styles
         
+        Try to keep the theme broad enough, and add enough complexity to allow for a variety of card types, and keep the color distribution in mind.
         Be as detailed as possible to create a rich and engaging world for the set.
         
         """
@@ -267,8 +268,8 @@ Return only the JSON array with no additional text or explanation."""
         Priority for upcoming cards:
         1. Colors that are severely under-represented should be highest priority
         2. Colors that are significantly under-represented should be high priority
-        3. Colors that are over-represented should be avoided unless necessary for mechanics
-        4. Maintain overall color balance while serving the set's themes"""
+        3. Colors that are over-represented should be generated less in this batch
+        4. Maintain overall color balance"""
 
         return f"""Based on the following context for a Magic The Gathering set:
 
@@ -306,38 +307,30 @@ Return only the JSON array with no additional text or explanation."""
         Existing cards in the set:
         {existing_cards}
 
-        Current color distribution:
-        {json.dumps(current_distribution, indent=2)}
-
-        Target color distribution:
-        {{
-          "W": 0.2,
-          "U": 0.2,
-          "B": 0.2,
-          "R": 0.2,
-          "G": 0.2
-        }}
-
+        Color analysis:
         {color_analysis}
 
         Instructions:
 
         - Create a batch of new cards that fit into the theme of the set.
         - Think of how this batch adds to the existing cards in the set.
-        - Make sure each batch has some memorable cards.
+        - Make sure this batch has some memorable cards.
         - Ensure that these cards are different enough from the cards already in the set. They should add to the variety and depth of the set.
         - Think about already existing cards, and how the cards in this batch complement those cards.
         - Cards in this batch are varied and different enough from the existing cards in the set.
         - Think about the color distribution analysis above and prioritize underrepresented colors.
-        - Try to keep card types in the set well-balanced.
+        - Try to keep card types in the set well-balanced. Also, make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
         - Make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
         - ALWAYS include an explanation between for any new mechanics or keywords introduced in this set between brackets, or for less common mechanics.
         Well known mechanics like flying, haste, etc. do not need explanations.
         - Think about synergy in the set.
         - Look at the rarity instructions.
+        - Multi color cards are fine, but they appear less frequently than mono color cards.
 
-        First describe few unique characters or events for the theme that are not already in the existing cards (notable characters in theme is fine).
+        First describe few unique characters or events for the theme that are not already in the existing cards (notable characters described in the theme are fine as long as they are not already in the set).
+        Then think of what would be a good addition to the existing cards in the set, in terms of variety, creature types, card types, etc.
         Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
+        Make a short plan for the batch, and then start creating the cards.
 
         Then generate {cards_per_batch} new cards, fitting the theme, with the following rarity distribution:
         - {self.config.mythics_per_batch} Mythic Rare

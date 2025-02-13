@@ -111,20 +111,36 @@ class MTGCardRenderer:
         await renderer.render_cards()
 
 
-# Example usage if run directly
+# Example usage if run directly to render from a json to a png
 if __name__ == "__main__":
-    from main import Config
+    json_example = {
+      "name": "Calaveth, Shifting Pariah",
+      "layout": "normal",
+      "collector_number": "5",
+      "image_uris": {
+        "art_crop": "../card-generator/output/20250213_213401/Calaveth,_Shifting_Pariah.png"
+      },
+      "mana_cost": "{1}{U}{R}",
+      "type_line": "Legendary Creature - Human Shapeshifter",
+      "oracle_text": "Prowess\n\n{R}, Exile Calaveth: Return it to the battlefield at the beginning of the next end step.\n\nWhenever Calaveth returns from exile, it gains your choice of first strike, menace, or flying until end of turn.",
+      "colors": [
+        "UR"
+      ],
+      "set": "thb",
+      "rarity": "uncommon",
+      "artist": "Vincent Bons",
+      "power": "3",
+      "toughness": "3",
+      "flavor_text": "\"I never lose. I just leave before I get caught.\""
+    }
 
-    config = Config(
-        csv_file_path="./assets/mtg_cards_english.csv",
-        inspiration_cards_count=50,
-        batches_count=1,
-        mythics_per_batch=1,
-        rares_per_batch=3,
-        uncommons_per_batch=4,
-        commons_per_batch=5,
-        color_distribution={
-            "W": 0.2, "U": 0.2, "B": 0.2, "R": 0.2, "G": 0.2
-        }
-    )
-    asyncio.run(MTGCardRenderer.render_cards_main(config))
+    config_example = Config()
+    config_example.output_dir = Path("output/example_set")
+    config_example.output_dir.mkdir(exist_ok=True)
+    render_format_dir = config_example.output_dir / "render_format"
+    render_format_dir.mkdir(exist_ok=True)
+    with open(render_format_dir / "example_render.json", "w", encoding="utf-8") as f:
+        json.dump(json_example, f, indent=2)
+
+    mtg_card_renderer = MTGCardRenderer(config_example)
+    asyncio.run(mtg_card_renderer.render_cards_main(config_example))

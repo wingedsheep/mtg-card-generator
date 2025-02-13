@@ -35,7 +35,7 @@ class MTGJSONConverter:
                         "HTTP-Referer": "https://example.com",
                         "X-Title": "MTG JSON Converter"
                     },
-                    model="openai/chatgpt-4o-latest",
+                    model="google/gemini-2.0-flash-001",
                     messages=[
                         {"role": "system",
                          "content": "You are a JSON converter that converts MTG card data to rendering format. Return only the JSON object with no additional text."},
@@ -179,12 +179,11 @@ class MTGJSONConverter:
 Single colors: W, U, B, R, G
 Dual colors: WU, WB, WR, WG, UB, UR, UG, BR, BG, RG
 Special types: Artifact, Vehicle, Land, Gold
-Rarity values: common, uncommon, rare, mythic
 Icon values: 0, 1, 2, 2B, 2G, 2R, 2U, 2W, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 100, 1000000, A, B, BG, BGP, BP, BR, BRP, C, CB, CG, CHAOS, CP, CR, CU, CW, D, E, G, GP, GU, GUP, GW, GWP, H, HALF, HR, HW, INFINITY, L, P, PW, Q, R, RG, RGP, RP, RW, RWP, S, T, TK, U, UB, UBP, UP, UR, URP, W, WB, WBP, WP, WU, WUP, X, Y, Z
 
 # Transformation Rules
 1. Use the image_path from input, but prepend "../card-generator/" to the path
-2. Convert colors from individual letters to paired format (e.g., ["G", "W"] becomes ["WG"]), from the dual-color list above
+2. Convert colors from individual letters to paired format (e.g., ["G", "W"] becomes ["WG"])
 3. Set 'layout' to "normal"
 4. Set 'set' to "thb"
 5. Set 'artist' to "Vincent Bons"
@@ -195,7 +194,7 @@ Icon values: 0, 1, 2, 2B, 2G, 2R, 2U, 2W, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1
 10. Convert the card text to oracle_text, handling line breaks and quotes properly
 11. Convert type to type_line
 12. Convert flavor to flavor_text (when present)
-13. Make rarity lowercase in the output
+13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
 
 Here are some examples:
 

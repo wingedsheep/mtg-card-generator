@@ -173,7 +173,7 @@ async def main():
     config = Config(
         csv_file_path="./assets/mtg_cards_english.csv",
         inspiration_cards_count=50,  # Number of cards to use as inspiration
-        batches_count=20,  # Number of batches to generate
+        batches_count=5,  # Number of batches to generate
 
         # Optional theme prompt to guide set generation
         theme_prompt=None,
