@@ -327,10 +327,10 @@ Return only the JSON array with no additional text or explanation."""
         - Look at the rarity instructions.
         - Multi color cards are fine, but they appear less frequently than mono color cards.
 
-        First describe few unique characters or events for the theme that are not already in the existing cards (notable characters described in the theme are fine as long as they are not already in the set).
-        Then think of what would be a good addition to the existing cards in the set, in terms of variety, creature types, card types, etc.
+        First make a plan for the rare and mythic cards of this batch, what are they going to be? (notable characters described in the theme are fine as long as they are not already in the set).
+        Then think of what would be a good addition to add some variety to the set and make it more interesting. What could we add to the uncommon and common cards?
         Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
-        Make a short plan for the batch, and then start creating the cards.
+        Make a short plan for the batch, write it down, and then start creating the cards.
 
         Then generate {cards_per_batch} new cards, fitting the theme, with the following rarity distribution:
         - {self.config.mythics_per_batch} Mythic Rare

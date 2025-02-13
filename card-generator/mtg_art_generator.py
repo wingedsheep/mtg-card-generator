@@ -103,11 +103,7 @@ Return only the prompt text with no additional explanation."""
 
     def save_card_data(self, card: Card, prompt: str, image_path: Path) -> None:
         """Save card data and prompt to JSON."""
-        output_data = {
-            "card": card.to_dict(),
-            "art_prompt": prompt,
-            "image_path": str(image_path)
-        }
+        output_data = card.to_dict()
 
         json_path = self.config.get_output_path(f"{card.name.replace(' ', '_')}.json")
         with open(json_path, "w", encoding="utf-8") as f:
