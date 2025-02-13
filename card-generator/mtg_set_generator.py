@@ -75,7 +75,7 @@ class MTGSetGenerator:
         {inspiration_summary}
         
         Create a detailed theme for a new Magic The Gathering set. Include:
-        1. Detailed history and lore of the set, including notable characters and events
+        1. Detailed history and lore of the set, including notable characters/creatures and events
         2. Key locations and events, themes of the set
         3. A list of creature types that appear in the set (not all, just the most common ones)
         4. Main mechanical themes and gameplay elements. No new mechanics, unless prompted by the user.
@@ -139,16 +139,28 @@ Return only the JSON array with no additional text or explanation."""
 
         # Calculate current color distribution
         color_counts = Counter()
-        for card in self.generated_cards:
-            for color in card.colors:
-                if color in self.config.color_distribution:
-                    color_counts[color] += 1
+        total_color_weight = 0
 
-        total_cards = len(self.generated_cards)
+        # Calculate weights for existing cards
+        for card in self.generated_cards:
+            # Count colors in this card
+            card_colors = [c for c in card.colors if c in self.config.color_distribution]
+            if card_colors:  # If it's a colored card
+                weight_per_color = 1.0 / len(card_colors)  # Distribute the weight evenly
+                for color in card_colors:
+                    color_counts[color] += weight_per_color
+                    total_color_weight += weight_per_color
+
+        # Calculate distribution as a percentage of total color weight
         current_distribution = {
-            color: count / total_cards if total_cards > 0 else 0
+            color: count / total_color_weight if total_color_weight > 0 else 0.2
             for color, count in color_counts.items()
         }
+
+        # Ensure all colors are represented in the distribution
+        for color in ["W", "U", "B", "R", "G"]:
+            if color not in current_distribution:
+                current_distribution[color] = 0 if total_color_weight > 0 else 0.2
 
         # Calculate expected total cards for this batch
         expected_cards = (
@@ -190,7 +202,8 @@ Return only the JSON array with no additional text or explanation."""
                 messages=[
                     {"role": "user", "content": cards_text},
                     {"role": "assistant", "content": initial_response},
-                    {"role": "user", "content": "continue with the remaining " + str(expected_cards - len(cards_data)) + " cards"}
+                    {"role": "user",
+                     "content": "continue with the remaining " + str(expected_cards - len(cards_data)) + " cards"}
                 ]
             )
 
@@ -226,89 +239,121 @@ Return only the JSON array with no additional text or explanation."""
             for card in self.generated_cards
         ])
 
-        cards_per_batch = self.config.mythics_per_batch + self.config.rares_per_batch + self.config.uncommons_per_batch + self.config.commons_per_batch
+        def get_representation_level(diff):
+            # Since target is 0.2 (20%), calculate percentage relative to target
+            percentage_diff = (diff / 0.2) * 100
+
+            if abs(percentage_diff) < 10:  # Less than 10% difference from target
+                return "well-balanced"
+            elif abs(percentage_diff) < 25:  # 10-25% difference from target
+                return "slightly " + ("under" if diff > 0 else "over") + "-represented"
+            elif abs(percentage_diff) < 50:  # 25-50% difference from target
+                return "significantly " + ("under" if diff > 0 else "over") + "-represented"
+            else:  # More than 50% difference from target
+                return "severely " + ("under" if diff > 0 else "over") + "-represented"
+
+        cards_per_batch = (self.config.mythics_per_batch +
+                           self.config.rares_per_batch +
+                           self.config.uncommons_per_batch +
+                           self.config.commons_per_batch)
+
+        color_analysis = f"""Color Distribution Analysis:
+        - White (W): {abs(0.2 - current_distribution.get('W', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('W', 0))}
+        - Blue (U): {abs(0.2 - current_distribution.get('U', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('U', 0))}
+        - Black (B): {abs(0.2 - current_distribution.get('B', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('B', 0))}
+        - Red (R): {abs(0.2 - current_distribution.get('R', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('R', 0))}
+        - Green (G): {abs(0.2 - current_distribution.get('G', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('G', 0))}
+
+        Priority for upcoming cards:
+        1. Colors that are severely under-represented should be highest priority
+        2. Colors that are significantly under-represented should be high priority
+        3. Colors that are over-represented should be avoided unless necessary for mechanics
+        4. Maintain overall color balance while serving the set's themes"""
 
         return f"""Based on the following context for a Magic The Gathering set:
 
-    Some inspirational cards. Just use these for mechanics, types etc. These cards are not in the set and not part of the theme:
-    {inspiration_cards}
+        Some inspirational cards. Just use these for mechanics, types etc. These cards are not in the set and not part of the theme:
+        {inspiration_cards}
 
-    Theme:
-    {self.set_theme}
-        
-    # Card Rarity Guidelines
-    
-    ## Common
-    - Simple, vanilla effects that work in multiples
-    - Basic creature types and spells
-    - Usually clean, short rules text, or no rules at all
-    - Foundation of gameplay mechanics
-    
-    ## Uncommon
-    - Moderately complex abilities
-    - Support for specific strategies
-    - Clear synergies with other cards
-    
-    ## Rare
-    - Format-defining effects
-    - Important characters or spells
-    - Unique mechanics
-    - Can shape deck strategies
-    
-    ## Mythic Rare
-    - Game-changing effects
-    - Major characters
-    - Splashy, memorable designs
-    - Build-around centerpieces
+        Theme:
+        {self.set_theme}
 
-    Existing cards in the set:
-    {existing_cards}
+        # Card Rarity Guidelines
 
-    Current color distribution:
-    {json.dumps(current_distribution, indent=2)}
+        ## Common
+        - Simple, vanilla effects that work in multiples
+        - Basic creature types and spells
+        - Usually clean, short rules text, or no rules at all
+        - Foundation of gameplay mechanics
 
-    Target color distribution:
-    {{
-      "W": 0.2,
-      "U": 0.2,
-      "B": 0.2,
-      "R": 0.2,
-      "G": 0.2
-    }}
+        ## Uncommon
+        - Moderately complex abilities
+        - Support for specific strategies
+        - Clear synergies with other cards
 
-    Instructions:
+        ## Rare
+        - Format-defining effects
+        - Important characters or spells
+        - Unique mechanics
+        - Can shape deck strategies
 
-    - Create a batch of new cards that fit into the theme of the set.
-    - Think of how this batch adds to the existing cards in the set.
-    - Make sure each batch has some memorable cards.
-    - Ensure that these cards are different enough from the cards already in the set. They should add to the variety and depth of the set.
-    - Think about already existing cards, and how the cards in this batch complement those cards.
-    - Cards in this batch are varied and different enough from the existing cards in the set.
-    - Try to keep card types in the set well-balanced.
-    - Make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
-    - ALWAYS include an explanation between for any new mechanics or keywords introduced in this set between brackets, or for less common mechanics.
-    Well known mechanics like flying, haste, etc. do not need explanations.
-    - Think about synergy in the set.
-    - Look at the rarity instructions.
+        ## Mythic Rare
+        - Game-changing effects
+        - Major characters
+        - Splashy, memorable designs
+        - Build-around centerpieces
 
-    First describe few unique characters or events for the theme that are not already in the existing cards (notable characters in theme is fine).
-    Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
+        Existing cards in the set:
+        {existing_cards}
 
-    Then generate {cards_per_batch} new cards, fitting the theme, with the following rarity distribution:
-    - {self.config.mythics_per_batch} Mythic Rare
-    - {self.config.rares_per_batch} Rare
-    - {self.config.uncommons_per_batch} Uncommon
-    - {self.config.commons_per_batch} Common
+        Current color distribution:
+        {json.dumps(current_distribution, indent=2)}
 
-    For each card, provide a complete description in this format:
-    Card Name (Rarity)
-    Mana Cost: [cost]
-    Type: [type]
-    Power/Toughness: [P/T] (if creature)
-    Rules Text: [text]
-    Flavor Text: [flavor]
-    Colors: [colors]
-    Description: [short lore + visual description]"""
+        Target color distribution:
+        {{
+          "W": 0.2,
+          "U": 0.2,
+          "B": 0.2,
+          "R": 0.2,
+          "G": 0.2
+        }}
+
+        {color_analysis}
+
+        Instructions:
+
+        - Create a batch of new cards that fit into the theme of the set.
+        - Think of how this batch adds to the existing cards in the set.
+        - Make sure each batch has some memorable cards.
+        - Ensure that these cards are different enough from the cards already in the set. They should add to the variety and depth of the set.
+        - Think about already existing cards, and how the cards in this batch complement those cards.
+        - Cards in this batch are varied and different enough from the existing cards in the set.
+        - Think about the color distribution analysis above and prioritize underrepresented colors.
+        - Try to keep card types in the set well-balanced.
+        - Make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
+        - ALWAYS include an explanation between for any new mechanics or keywords introduced in this set between brackets, or for less common mechanics.
+        Well known mechanics like flying, haste, etc. do not need explanations.
+        - Think about synergy in the set.
+        - Look at the rarity instructions.
+
+        First describe few unique characters or events for the theme that are not already in the existing cards (notable characters in theme is fine).
+        Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
+
+        Then generate {cards_per_batch} new cards, fitting the theme, with the following rarity distribution:
+        - {self.config.mythics_per_batch} Mythic Rare
+        - {self.config.rares_per_batch} Rare
+        - {self.config.uncommons_per_batch} Uncommon
+        - {self.config.commons_per_batch} Common
+
+        For each card, provide a complete description in this format:
+        Card Name (Rarity)
+        Mana Cost: [cost]
+        Type: [type]
+        Power/Toughness: [P/T] (if creature)
+        Rules Text: [text]
+        Flavor Text: [flavor]
+        Colors: [colors]
+        Description: [short lore + visual description]"""
 
     def generate_set(self) -> None:
         """Generate complete card set."""
