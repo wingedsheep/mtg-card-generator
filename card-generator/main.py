@@ -228,7 +228,7 @@ async def main():
 
         # Basic land generation
         generate_basic_lands=True,
-        land_variations_per_type=1,  # Generate 3 variations for each basic land type
+        land_variations_per_type=3,  # Generate 3 variations for each basic land type
 
         # Rarity distribution per batch
         mythics_per_batch=1,
