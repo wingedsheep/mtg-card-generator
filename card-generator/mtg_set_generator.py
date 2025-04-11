@@ -335,7 +335,6 @@ Return only the JSON array with no additional text or explanation."""
 
     def generate_batch_cards(self, batch_num: int) -> List[Card]:
         """Generate a single batch of cards and return them."""
-        print(f"\nGenerating batch {batch_num}/{self.config.batches_count}...")
         card_dicts = self.generate_batch(batch_num)
 
         # Convert dictionaries to Card objects

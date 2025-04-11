@@ -25,6 +25,7 @@ class MTGGeneratorOrchestrator:
         self.json_converter = MTGJSONConverter(config)
         self.card_renderer = MTGCardRenderer(config)
         # Art generator will be initialized after we have the theme
+        self.art_generator = None
 
     async def generate_complete_set(self) -> Dict:
         """Generate a complete MTG set including cards, art, and rendered images.
@@ -228,7 +229,7 @@ async def main():
 
         # Basic land generation
         generate_basic_lands=True,
-        land_variations_per_type=3,  # Generate 3 variations for each basic land type
+        land_variations_per_type=3,
 
         # Rarity distribution per batch
         mythics_per_batch=1,

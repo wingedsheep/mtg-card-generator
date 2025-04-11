@@ -84,7 +84,12 @@ Return only the prompt text with no additional explanation."""
 
     def save_card_data(self, card: Card, prompt: str, image_path: Path) -> None:
         """Save card data and prompt to JSON."""
-        output_data = card.to_dict()
+        # Get card data as dictionary
+        card_dict = card.to_dict()
+
+        # Wrap the card data in the format expected by the converter
+        # This matches the format used in mtg_land_generator.py
+        output_data = {"card": card_dict}
 
         json_path = self.config.get_output_path(f"{card.name.replace(' ', '_')}.json")
         with open(json_path, "w", encoding="utf-8") as f:
