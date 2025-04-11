@@ -1,7 +1,6 @@
 import json
 import datetime
 import asyncio
-from pathlib import Path
 from typing import Dict, List
 from collections import Counter
 
@@ -191,7 +190,7 @@ class MTGGeneratorOrchestrator:
                     "models": {
                         "main": self.config.main_model,
                         "json": self.config.json_model,
-                        "replicate": self.config.replicate_model
+                        "image": self.config.image_model
                     },
                     "basic_lands": {
                         "enabled": self.config.generate_basic_lands,
@@ -244,7 +243,10 @@ async def main():
             "B": 0.2,  # Black
             "R": 0.2,  # Red
             "G": 0.2  # Green
-        }
+        },
+
+        # Image generation model (options: "flux" or "imagen")
+        image_model="imagen"
     )
 
     # Create and run orchestrator

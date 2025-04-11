@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 import replicate
 from models import Card, Config
+from PIL import Image
+from io import BytesIO
 
 
 class MTGArtGenerator:
@@ -95,6 +97,46 @@ Return only the prompt text with no additional explanation."""
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2)
 
+    def crop_to_5x4_ratio(self, image_data):
+        """Crop an image to 5:4 aspect ratio, keeping the center portion.
+
+        Args:
+            image_data: Image data as bytes
+
+        Returns:
+            bytes: The cropped image data
+        """
+        # Open the image using PIL
+        image = Image.open(BytesIO(image_data))
+        width, height = image.size
+
+        # Calculate current aspect ratio
+        current_ratio = width / height
+        target_ratio = 5 / 4
+
+        if abs(current_ratio - target_ratio) < 0.01:
+            # Already close enough to 5:4, return as-is
+            return image_data
+
+        # Calculate new dimensions
+        if current_ratio > target_ratio:
+            # Image is too wide - crop width
+            new_width = int(height * target_ratio)
+            left = (width - new_width) // 2
+            right = left + new_width
+            cropped_image = image.crop((left, 0, right, height))
+        else:
+            # Image is too tall - crop height
+            new_height = int(width / target_ratio)
+            top = (height - new_height) // 2
+            bottom = top + new_height
+            cropped_image = image.crop((0, top, width, bottom))
+
+        # Convert back to bytes
+        output = BytesIO()
+        cropped_image.save(output, format=image.format or 'PNG')
+        return output.getvalue()
+
     def generate_card_art(self, card: Card, max_retries: int = 5, retry_delay: int = 3) -> tuple[str, bytes]:
         """Generate both art prompt and image for a card with retry logic.
 
@@ -117,26 +159,71 @@ Return only the prompt text with no additional explanation."""
                 art_prompt = self.generate_art_prompt(card, attempt)
                 print(f"Generated art prompt (attempt {attempt + 1}): {art_prompt}...")
 
-                # Generate image using the prompt with Replicate model from config
+                # Get the active Replicate model
+                active_model = self.config.get_active_replicate_model()
+                print(f"Using image model: {active_model}")
+
+                # Configure model-specific parameters
+                model_params = self._get_model_params(art_prompt)
+
+                # Keep track of the original aspect ratio for later processing
+                original_aspect_ratio = model_params.get("aspect_ratio", "5:4")
+
+                # Generate image using the prompt with selected Replicate model
                 image_response = replicate.run(
-                    self.config.replicate_model,
-                    input={
-                        "prompt": art_prompt,
-                        "aspect_ratio": "5:4",
-                        "safety_tolerance": 6,
-                        "prompt_upsampling": True
-                    }
+                    active_model,
+                    input=model_params
                 )
 
-                return art_prompt, image_response
+                # Convert response to bytes
+                if hasattr(image_response, 'read'):
+                    image_data = image_response.read()
+                else:
+                    # If it's a URL or other format
+                    import requests
+                    image_data = requests.get(image_response).content
+
+                # Check if we need to crop (only if aspect ratio != 5:4)
+                if original_aspect_ratio != "5:4":
+                    print(f"Cropping image from {original_aspect_ratio} to 5:4...")
+                    image_data = self.crop_to_5x4_ratio(image_data)
+
+                # Create a BytesIO object that behaves like a file
+                return art_prompt, BytesIO(image_data)
 
             except Exception as e:
                 if attempt == max_retries - 1:  # Last attempt
                     print(f"Failed to generate art after {max_retries} attempts: {str(e)}")
-                    return "", b""
+                    return "", BytesIO(b"")
                 else:
                     print(f"Attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
+
+    def _get_model_params(self, prompt: str) -> dict:
+        """Get model-specific parameters based on the selected image model."""
+        active_model_name = self.config.image_model
+
+        if active_model_name == "flux":
+            return {
+                "prompt": prompt,
+                "aspect_ratio": "5:4",
+                "safety_tolerance": 6,
+                "prompt_upsampling": True
+            }
+        elif active_model_name == "imagen":
+            return {
+                "prompt": prompt,
+                "aspect_ratio": "4:3",  # Keep original aspect ratio for generation
+                "safety_filter_level": "block_only_high"
+            }
+        else:
+            # Default to Flux parameters
+            return {
+                "prompt": prompt,
+                "aspect_ratio": "5:4",
+                "safety_tolerance": 6,
+                "prompt_upsampling": True
+            }
 
     def process_card(self, card: Card) -> Card:
         """Process a single card, generating art and saving data."""

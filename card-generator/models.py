@@ -31,10 +31,16 @@ class Config:
     # Color balance target (percentage)
     color_distribution: Dict[str, float] = None
 
-    # API model configurations (set defaults from settings in post_init)
+    # API model configurations
     main_model: str = None
     json_model: str = None
-    replicate_model: str = None
+
+    # Image generation models
+    image_model: str = "flux"  # Can be "flux" or "imagen"
+    replicate_models: Dict[str, str] = field(default_factory=lambda: {
+        "flux": "black-forest-labs/flux-1.1-pro",
+        "imagen": "google/imagen-3"
+    })
 
     # API configuration
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
@@ -60,7 +66,7 @@ class Config:
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Load settings from file if models not specified
-        if not all([self.main_model, self.json_model, self.replicate_model]):
+        if not all([self.main_model, self.json_model]):
             self.load_model_settings()
 
     def get_output_path(self, filename: str) -> Path:
@@ -77,8 +83,19 @@ class Config:
                     self.main_model = settings.get("models", {}).get("openai", "openai/chatgpt-4o-latest")
                 if not self.json_model:
                     self.json_model = settings.get("models", {}).get("gemini", "google/gemini-2.0-flash-001")
-                if not self.replicate_model:
-                    self.replicate_model = settings.get("models", {}).get("replicate", "black-forest-labs/flux-1.1-pro")
+
+                # Load image model preferences
+                models_config = settings.get("models", {})
+                if "image_model" in models_config:
+                    self.image_model = models_config["image_model"]
+
+                # Update replicate models if specified
+                replicate_config = models_config.get("replicate", {})
+                if isinstance(replicate_config, dict):
+                    for model_key, model_id in replicate_config.items():
+                        if model_key in self.replicate_models:
+                            self.replicate_models[model_key] = model_id
+
         except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
             print(f"Warning: Could not load model settings from {settings_path}: {e}")
             # Set fallback defaults
@@ -86,8 +103,6 @@ class Config:
                 self.main_model = "openai/chatgpt-4o-latest"
             if not self.json_model:
                 self.json_model = "google/gemini-2.0-flash-001"
-            if not self.replicate_model:
-                self.replicate_model = "black-forest-labs/flux-1.1-pro"
 
     def initialize_clients(self, settings_path: str = "settings.json"):
         """Initialize API clients based on settings."""
@@ -107,6 +122,10 @@ class Config:
         )
 
         return self.openai_client
+
+    def get_active_replicate_model(self) -> str:
+        """Get the currently active Replicate model based on the image_model setting."""
+        return self.replicate_models.get(self.image_model, self.replicate_models["flux"])
 
 
 @dataclass

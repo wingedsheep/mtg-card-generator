@@ -57,7 +57,7 @@ class MTGCardRenderer:
                     await page.fill('#card-json', json.dumps(card_data, indent=2))
 
                     # Allow a short delay for the content to be processed
-                    await page.wait_for_timeout(1000)
+                    await page.wait_for_timeout(500)
 
                     # Click the render button
                     await page.click('#render-button')
@@ -70,7 +70,7 @@ class MTGCardRenderer:
                         () => {
                             const card = document.querySelector('.mtg-card');
                             if (card) {
-                                card.style.transform = 'scale(2)';
+                                card.style.transform = 'scale(4)';
                                 card.style.transformOrigin = 'top left';
                             }
                         }
@@ -124,3 +124,38 @@ class MTGCardRenderer:
         """Static method to create and run the renderer."""
         renderer = MTGCardRenderer(config)
         await renderer.render_cards()
+
+
+# Example usage if run directly to render from a json to a png
+if __name__ == "__main__":
+    json_example = {
+        "name": "Calaveth, Shifting Pariah",
+        "layout": "normal",
+        "collector_number": "5",
+        "image_uris": {
+            "art_crop": "../card-generator/output/20250213_213401/Calaveth,_Shifting_Pariah.png"
+        },
+        "mana_cost": "{1}{U}{R}",
+        "type_line": "Legendary Creature - Human Shapeshifter",
+        "oracle_text": "Prowess\n\n{R}, Exile Calaveth: Return it to the battlefield at the beginning of the next end step.\n\nWhenever Calaveth returns from exile, it gains your choice of first strike, menace, or flying until end of turn.",
+        "colors": [
+            "UR"
+        ],
+        "set": "thb",
+        "rarity": "uncommon",
+        "artist": "Vincent Bons",
+        "power": "3",
+        "toughness": "3",
+        "flavor_text": "\"I never lose. I just leave before I get caught.\""
+    }
+
+    config_example = Config()
+    config_example.output_dir = Path("output/example_set")
+    config_example.output_dir.mkdir(exist_ok=True)
+    render_format_dir = config_example.output_dir / "render_format"
+    render_format_dir.mkdir(exist_ok=True)
+    with open(render_format_dir / "example_render.json", "w", encoding="utf-8") as f:
+        json.dump(json_example, f, indent=2)
+
+    mtg_card_renderer = MTGCardRenderer(config_example)
+    asyncio.run(mtg_card_renderer.render_cards_main(config_example))

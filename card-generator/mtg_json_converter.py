@@ -154,6 +154,7 @@ class MTGJSONConverter:
                                    "create a 5/5 red Elemental creature token with trample.",
                     "colors": ["RG"],
                     "set": "thb",
+                    "authority": None,
                     "rarity": "rare",
                     "artist": "Vincent Bons",
                     "flavor_text": "The Scavenger Tribes see opportunity in fire and ruin."
@@ -183,7 +184,7 @@ class MTGJSONConverter:
         11. Convert type to type_line
         12. Convert flavor to flavor_text (when present)
         13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
-        14. Add authority for Planeswalker cards
+        14. Add an authority field for Planeswalker cards
         15. Basic land cards have no text, so set text to "".
 
         Here are some examples:
