@@ -14,14 +14,14 @@ class MTGLandGenerator:
         self.land_colors = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G"}
         self.collector_number_counter = 500  # Start land collection numbers at 500
 
-    def generate_land_prompt(self, land_type: str, variation_number: int) -> str:
+    def generate_land_prompt(self, land_type: str) -> str:
         """Generate a unique art prompt for a basic land."""
         prompt = f"""Create a detailed art prompt for a {land_type} basic land card in Magic: The Gathering.
 
 Set Theme Context:
 {self.theme}
 
-This is variation #{variation_number} of the {land_type} for this set. Make it unique and distinct from other variations while still fitting the overall set theme.
+This is a variation of the {land_type} for this set. Make it unique and distinct from other variations while still fitting the overall set theme.
 
 Create a vivid, detailed scene that captures the essence of a {land_type}. The art should reflect the color identity and mana characteristics of this land type, while incorporating elements from the set's theme.
 
@@ -51,10 +51,10 @@ Return only the art prompt text with no additional explanation."""
 
         return completion.choices[0].message.content
 
-    def generate_land_card(self, land_type: str, variation_number: int) -> Card:
+    def generate_land_card(self, land_type: str) -> Card:
         """Create a Card object for a basic land."""
         card = Card(
-            name=f"{land_type} {variation_number}",
+            name=f"{land_type}",
             mana_cost="",
             type=f"Basic Land — {land_type}",
             rarity="Common",
@@ -117,10 +117,10 @@ Return only the art prompt text with no additional explanation."""
                 print(f"  Processing {land_type} variation {variation}...")
 
                 # Create the land card
-                land_card = self.generate_land_card(land_type, variation)
+                land_card = self.generate_land_card(land_type)
 
                 # Generate art prompt
-                art_prompt = self.generate_land_prompt(land_type, variation)
+                art_prompt = self.generate_land_prompt(land_type)
                 land_card.art_prompt = art_prompt
                 print(f"  Generated art prompt for {land_card.name}")
 

@@ -184,7 +184,7 @@ class MTGJSONConverter:
         12. Convert flavor to flavor_text (when present)
         13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
         14. Add authority for Planeswalker cards
-        15. Basic land cards have no text, so set text to "". Their name is only the type (e.g., "Forest", "Island", "Mountain", etc., without any other text)
+        15. Basic land cards have no text, so set text to "".
 
         Here are some examples:
 
