@@ -85,8 +85,25 @@ class MTGSetGenerator:
     def convert_text_to_json(self, cards_text: str) -> List[Dict]:
         """Convert card text descriptions to JSON format."""
         prompt = f"""Convert the following Magic: The Gathering card descriptions into a JSON array.
-Each card should have the following fields: name, mana_cost, type, rarity, power (null if not creature), 
-toughness (null if not creature), text, flavor, colors (array of W, U, B, R, G or none if colorless), description.
+Each card has the following fields: name, mana_cost, type, rarity, power (null if not creature), 
+toughness (null if not creature), authority (null if not planeswalker), text, flavor, colors (array of W, U, B, R, G or none if colorless), description.
+
+class Card:
+    name: str
+    mana_cost: str
+    type: str
+    rarity: str
+    text: str
+    colors: List[str]
+    flavor: Optional[str] = None,
+    power: Optional[str] = None
+    toughness: Optional[str] = None
+    authority: Optional[str] = None
+    set_name: str = ""
+    art_prompt: Optional[str] = None
+    image_path: Optional[str] = None
+    collector_number: Optional[str] = None
+    description: str = ""
 
 Cards to convert:
 
