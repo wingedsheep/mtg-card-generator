@@ -20,6 +20,18 @@ class MTGCardRenderer:
         if not render_dir.exists():
             raise FileNotFoundError(f"Render format directory not found at {render_dir}")
 
+        # Gather all render JSON files
+        json_files = list(render_dir.glob("*_render.json"))
+        return await self.render_card_files(json_files)
+
+    async def render_card_files(self, json_files):
+        """Render a list of specific card JSON files."""
+        if not json_files:
+            print("No card files to render")
+            return []
+
+        rendered_images = []
+
         async with async_playwright() as p:
             # Launch browser with a larger viewport
             browser = await p.chromium.launch()
@@ -28,8 +40,8 @@ class MTGCardRenderer:
             # Load the renderer page
             await page.goto(f"file://{self.complete_html_path.absolute()}")
 
-            # Process each JSON file in the render format directory
-            for json_file in render_dir.glob("*_render.json"):
+            # Process each JSON file
+            for json_file in json_files:
                 print(f"\nRendering {json_file.stem}...")
 
                 try:
@@ -94,6 +106,7 @@ class MTGCardRenderer:
                                 animations='disabled'
                             )
                             print(f"Saved high-quality card image to {output_path}")
+                            rendered_images.append(output_path)
                         else:
                             print(f"Error: Could not retrieve bounding box for {json_file.name}")
                     else:
@@ -104,43 +117,10 @@ class MTGCardRenderer:
 
             await browser.close()
 
+        return rendered_images
+
     @staticmethod
     async def render_cards_main(config: Config):
         """Static method to create and run the renderer."""
         renderer = MTGCardRenderer(config)
         await renderer.render_cards()
-
-
-# Example usage if run directly to render from a json to a png
-if __name__ == "__main__":
-    json_example = {
-      "name": "Calaveth, Shifting Pariah",
-      "layout": "normal",
-      "collector_number": "5",
-      "image_uris": {
-        "art_crop": "../card-generator/output/20250213_213401/Calaveth,_Shifting_Pariah.png"
-      },
-      "mana_cost": "{1}{U}{R}",
-      "type_line": "Legendary Creature - Human Shapeshifter",
-      "oracle_text": "Prowess\n\n{R}, Exile Calaveth: Return it to the battlefield at the beginning of the next end step.\n\nWhenever Calaveth returns from exile, it gains your choice of first strike, menace, or flying until end of turn.",
-      "colors": [
-        "UR"
-      ],
-      "set": "thb",
-      "rarity": "uncommon",
-      "artist": "Vincent Bons",
-      "power": "3",
-      "toughness": "3",
-      "flavor_text": "\"I never lose. I just leave before I get caught.\""
-    }
-
-    config_example = Config()
-    config_example.output_dir = Path("output/example_set")
-    config_example.output_dir.mkdir(exist_ok=True)
-    render_format_dir = config_example.output_dir / "render_format"
-    render_format_dir.mkdir(exist_ok=True)
-    with open(render_format_dir / "example_render.json", "w", encoding="utf-8") as f:
-        json.dump(json_example, f, indent=2)
-
-    mtg_card_renderer = MTGCardRenderer(config_example)
-    asyncio.run(mtg_card_renderer.render_cards_main(config_example))

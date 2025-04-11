@@ -4,5 +4,10 @@
   },
   "replicate": {
     "apiKey": null
+  },
+  "models": {
+    "main": "google/gemini-2.5-pro-exp-03-25:free",
+    "json": "google/gemini-2.0-flash-001",
+    "replicate": "black-forest-labs/flux-1.1-pro"
   }
 }

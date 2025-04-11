@@ -1,23 +1,14 @@
 import json
 from pathlib import Path
-from openai import OpenAI
-from typing import Dict
+from typing import Dict, List
+
+from models import Config, Card
 
 
 class MTGJSONConverter:
-    def __init__(self):
-        self.client = self._initialize_client()
-
-    def _initialize_client(self) -> OpenAI:
-        """Initialize the OpenAI client with OpenRouter configuration."""
-        with open("settings.json") as f:
-            settings = json.load(f)
-            openrouter_api_key = settings["openrouter"]["apiKey"]
-
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=openrouter_api_key,
-        )
+    def __init__(self, config: Config = None):
+        self.config = config
+        self.client = config.openai_client if config else None
 
     def convert_to_rendering_format(self, input_json: Dict, max_retries: int = 3) -> Dict:
         """Convert input JSON to rendering format using OpenRouter with retries."""
@@ -31,11 +22,8 @@ class MTGJSONConverter:
             try:
                 # Get conversion from OpenRouter
                 completion = self.client.chat.completions.create(
-                    extra_headers={
-                        "HTTP-Referer": "https://example.com",
-                        "X-Title": "MTG JSON Converter"
-                    },
-                    model="google/gemini-2.0-flash-001",
+                    extra_headers=self.config.api_headers,
+                    model=self.config.json_model,  # Use Gemini model from config
                     messages=[
                         {"role": "system",
                          "content": "You are a JSON converter that converts MTG card data to rendering format. Return only the JSON object with no additional text."},
@@ -180,7 +168,7 @@ class MTGJSONConverter:
         Dual colors: WU, WB, WR, WG, UB, UR, UG, BR, BG, RG
         Special types: Artifact, Vehicle, Land, Gold
         Icon values: 0, 1, 2, 2B, 2G, 2R, 2U, 2W, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 100, 1000000, A, B, BG, BGP, BP, BR, BRP, C, CB, CG, CHAOS, CP, CR, CU, CW, D, E, G, GP, GU, GUP, GW, GWP, H, HALF, HR, HW, INFINITY, L, P, PW, Q, R, RG, RGP, RP, RW, RWP, S, T, TK, U, UB, UBP, UP, UR, URP, W, WB, WBP, WP, WU, WUP, X, Y, Z
-        
+
         # Transformation Rules
         1. Use the image_path from input, but prepend "../card-generator/" to the path
         2. Convert colors from individual letters to paired format (e.g., ["G", "W"] becomes ["WG"])
@@ -196,27 +184,28 @@ class MTGJSONConverter:
         12. Convert flavor to flavor_text (when present)
         13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
         14. Add authority for Planeswalker cards
-        
+        15. Basic land cards have no text, so set text to "". Their name is the type (e.g., "Forest", "Island", "Mountain", etc., without any other text)
+
         Here are some examples:
-        
+
         Example 1:
         Input: {json.dumps(example_pairs[0]["input"], indent=2)}
-        
+
         Output: {json.dumps(example_pairs[0]["output"], indent=2)}
-        
+
         Example 2:
         Input: {json.dumps(example_pairs[1]["input"], indent=2)}
-        
+
         Output: {json.dumps(example_pairs[1]["output"], indent=2)}
-        
+
         Example 3:
         Input: {json.dumps(example_pairs[2]["input"], indent=2)}
-        
+
         Output: {json.dumps(example_pairs[2]["output"], indent=2)}
-        
+
         Now convert this card data to the same format:
         {json.dumps(card_data, indent=2)}
-        
+
         Return only the JSON object with no additional text."""
 
         return prompt
@@ -256,3 +245,42 @@ class MTGJSONConverter:
                 print(f"Successfully saved to {output_path}")
             except Exception as e:
                 print(f"Failed to convert {json_file.name} after {max_retries} attempts: {e}")
+
+    def convert_cards(self, cards: List[Card], output_dir: Path, max_retries: int = 3) -> List[Path]:
+        """Convert a list of cards to rendering format and save to output directory.
+
+        Returns:
+            List of paths to the generated render JSON files
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a separate directory for rendering format
+        render_dir = output_dir / "render_format"
+        render_dir.mkdir(parents=True, exist_ok=True)
+
+        render_paths = []
+
+        for card in cards:
+            # Skip cards without JSON files
+            card_json_path = output_dir / f"{card.name.replace(' ', '_')}.json"
+            if not card_json_path.exists():
+                print(f"Warning: JSON file for {card.name} not found at {card_json_path}")
+                continue
+
+            print(f"\nConverting {card.name}...")
+            try:
+                converted_json = self.convert_file(card_json_path, max_retries=max_retries)
+
+                # Save to new directory with _render suffix
+                output_filename = card_json_path.stem + "_render.json"
+                output_path = render_dir / output_filename
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    json.dump(converted_json, f, indent=2)
+
+                render_paths.append(output_path)
+                print(f"Successfully saved to {output_path}")
+            except Exception as e:
+                print(f"Failed to convert {card.name} after {max_retries} attempts: {e}")
+
+        return render_paths

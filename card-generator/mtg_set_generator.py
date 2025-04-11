@@ -2,7 +2,6 @@ import csv
 import json
 import random
 from collections import Counter
-from openai import OpenAI
 from typing import List, Dict
 from models import Config, Card
 
@@ -15,19 +14,8 @@ class MTGSetGenerator:
         self.set_theme = ""
         self.collector_number_counter = 1  # Initialize counter at 1
 
-        # Load API key and initialize client
-        self.client = self._initialize_client()
-
-    def _initialize_client(self) -> OpenAI:
-        """Initialize the OpenAI client with OpenRouter configuration."""
-        with open("settings.json") as f:
-            settings = json.load(f)
-            openrouter_api_key = settings["openrouter"]["apiKey"]
-
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=openrouter_api_key,
-        )
+        # Use the client from the config
+        self.client = config.openai_client
 
     def load_inspiration_cards(self) -> None:
         """Load random cards from CSV file as inspiration."""
@@ -55,11 +43,8 @@ class MTGSetGenerator:
         prompt = self._get_theme_prompt(inspiration_summary)
 
         completion = self.client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": "https://example.com",
-                "X-Title": "MTG Set Generator"
-            },
-            model="openai/chatgpt-4o-latest",
+            extra_headers=self.config.api_headers,
+            model=self.config.main_model,
             temperature=1.0,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -73,7 +58,7 @@ class MTGSetGenerator:
         base_prompt = f"""
         Some inspirational cards. These cards are not in the set and not part of the theme. You can just use them to get a feel for the mechanics, types etc.:
         {inspiration_summary}
-        
+
         Create a detailed theme for a new Magic The Gathering set. Include:
         1. Detailed history and lore of the set, including notable characters/creatures and events
         2. Key factions, locations, events that are a part of this set
@@ -81,10 +66,10 @@ class MTGSetGenerator:
         4. Main mechanical themes and gameplay elements. Don't introduce new mechanics here, just describe how they are used in the set.
         5. Potential synergies between different card types and mechanics
         6. How the theme supports different play styles
-        
+
         Try to keep the theme broad enough, and add enough complexity to allow for a variety of card types, and keep the color distribution in mind.
         Be as detailed as possible to create a rich and engaging world for the set.
-        
+
         """
 
         # If a theme prompt is provided, incorporate it into the base prompt
@@ -110,11 +95,8 @@ Cards to convert:
 Return only the JSON array with no additional text or explanation."""
 
         completion = self.client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": "https://example.com",
-                "X-Title": "MTG Set Generator"
-            },
-            model="openai/chatgpt-4o-latest",
+            extra_headers=self.config.api_headers,
+            model=self.config.main_model,
             messages=[
                 {"role": "system", "content": "You are a JSON converter."},
                 {"role": "user", "content": prompt}
@@ -174,11 +156,8 @@ Return only the JSON array with no additional text or explanation."""
         # Initial generation attempt
         cards_text = self._get_batch_prompt(current_distribution)
         completion = self.client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": "https://example.com",
-                "X-Title": "MTG Set Generator"
-            },
-            model="openai/chatgpt-4o-latest",
+            extra_headers=self.config.api_headers,
+            model=self.config.main_model,
             messages=[{"role": "user", "content": cards_text}]
         )
 
@@ -195,11 +174,8 @@ Return only the JSON array with no additional text or explanation."""
 
             # Simple continuation request
             continuation = self.client.chat.completions.create(
-                extra_headers={
-                    "HTTP-Referer": "https://example.com",
-                    "X-Title": "MTG Set Generator"
-                },
-                model="openai/chatgpt-4o-latest",
+                extra_headers=self.config.api_headers,
+                model=self.config.main_model,
                 messages=[
                     {"role": "user", "content": cards_text},
                     {"role": "assistant", "content": initial_response},
@@ -349,20 +325,36 @@ Return only the JSON array with no additional text or explanation."""
         Colors: [colors]
         Description: [short lore + visual description]"""
 
-    def generate_set(self) -> None:
-        """Generate complete card set."""
+    def initialize_set(self) -> None:
+        """Initialize the set by loading inspiration cards and generating the theme."""
         self.load_inspiration_cards()
         self.generate_set_theme()
 
         # Reset collector number counter at the start of set generation
         self.collector_number_counter = 1
 
-        for batch_num in range(1, self.config.batches_count + 1):
-            new_cards = self.generate_batch(batch_num)
-            self.generated_cards.extend([Card.from_dict(card_data) for card_data in new_cards])
+    def generate_batch_cards(self, batch_num: int) -> List[Card]:
+        """Generate a single batch of cards and return them."""
+        print(f"\nGenerating batch {batch_num}/{self.config.batches_count}...")
+        card_dicts = self.generate_batch(batch_num)
 
-            print(f"Batch {batch_num} complete. Total cards: {len(self.generated_cards)}")
-            self.save_progress()
+        # Convert dictionaries to Card objects
+        cards = [Card.from_dict(card_data) for card_data in card_dicts]
+
+        # Add to the overall set
+        self.generated_cards.extend(cards)
+
+        print(f"Batch {batch_num} generation complete. Total cards: {len(self.generated_cards)}")
+        self.save_progress()
+
+        return cards
+
+    def generate_set(self) -> None:
+        """Generate complete card set."""
+        self.initialize_set()
+
+        for batch_num in range(1, self.config.batches_count + 1):
+            self.generate_batch_cards(batch_num)
 
     def save_progress(self) -> None:
         """Save current progress to JSON file."""

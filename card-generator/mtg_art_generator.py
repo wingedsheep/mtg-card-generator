@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from openai import OpenAI
 import replicate
 from models import Card, Config
 
@@ -9,27 +8,12 @@ class MTGArtGenerator:
     def __init__(self, config: Config, theme: str = None):
         self.config = config
         self.theme = theme
-        self.client = self._initialize_client()
 
-    def _initialize_client(self) -> OpenAI:
-        """Initialize the OpenAI client with OpenRouter configuration."""
-        with open("settings.json") as f:
-            settings = json.load(f)
-            openrouter_api_key = settings["openrouter"]["apiKey"]
-
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=openrouter_api_key,
-        )
-
-    def _initialize_output_dir(self) -> Path:
-        """Initialize and return the output directory."""
-        output_dir = Path("./output")
-        output_dir.mkdir(exist_ok=True)
-        return output_dir
+        # Use the client from the config
+        self.client = config.openai_client
 
     def generate_art_prompt(self, card: Card, attempt: int = 0) -> str:
-        """Generate an art prompt for a given card using OpenRouter."""
+        """Generate an art prompt for a given card using OpenRouter API."""
         theme_context = f"""Set Theme Context:
 {self.theme}
 
@@ -91,11 +75,8 @@ canvas artwork.
 Return only the prompt text with no additional explanation."""
 
         completion = self.client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": "https://example.com",
-                "X-Title": "MTG Art Generator"
-            },
-            model="openai/chatgpt-4o-latest",
+            extra_headers=self.config.api_headers,
+            model=self.config.main_model,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -129,11 +110,11 @@ Return only the prompt text with no additional explanation."""
             try:
                 # Generate art prompt
                 art_prompt = self.generate_art_prompt(card, attempt)
-                print(f"Generated art prompt (attempt {attempt + 1}): {art_prompt[:100]}...")
+                print(f"Generated art prompt (attempt {attempt + 1}): {art_prompt}...")
 
-                # Generate image using the prompt
+                # Generate image using the prompt with Replicate model from config
                 image_response = replicate.run(
-                    "black-forest-labs/flux-1.1-pro",
+                    self.config.replicate_model,
                     input={
                         "prompt": art_prompt,
                         "aspect_ratio": "5:4",

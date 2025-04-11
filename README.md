@@ -139,6 +139,19 @@ config = Config(
 )
 ```
 
+## Basic Land Generation
+
+The system automatically generates variations of each basic land type:
+
+- Plains, Island, Swamp, Mountain, and Forest
+- Each type gets multiple artistic variations
+- Land art is themed to match your set's aesthetic
+
+You can configure:
+
+- Whether to generate basic lands (`generate_basic_lands`)
+- How many variations to create for each type (`land_variations_per_type`)
+
 ## Card Rendering Details
 
 The card renderer supports:

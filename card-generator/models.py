@@ -1,17 +1,26 @@
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from pathlib import Path
+import json
+import os
+from openai import OpenAI
+
 
 @dataclass
 class Config:
     """Configuration for MTG card generation."""
+    # File paths and basic configuration
     csv_file_path: str = "./assets/mtg_cards_english.csv"
     inspiration_cards_count: int = 100
     batches_count: int = 20
     theme_prompt: Optional[str] = None
     set_id: str = None
     output_dir: Path = None
+
+    # Land generation options
+    generate_basic_lands: bool = True
+    land_variations_per_type: int = 3
 
     # Rarity distribution per batch
     mythics_per_batch: int = 1
@@ -21,6 +30,23 @@ class Config:
 
     # Color balance target (percentage)
     color_distribution: Dict[str, float] = None
+
+    # API model configurations (set defaults from settings in post_init)
+    main_model: str = None
+    json_model: str = None
+    replicate_model: str = None
+
+    # API configuration
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    # API client
+    openai_client: Optional[Any] = None
+
+    # Extra headers for API calls
+    api_headers: Dict[str, str] = field(default_factory=lambda: {
+        "HTTP-Referer": "https://example.com",
+        "X-Title": "MTG Card Generator"
+    })
 
     def __post_init__(self):
         if self.color_distribution is None:
@@ -33,9 +59,54 @@ class Config:
             self.output_dir = Path("output") / self.set_id
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Load settings from file if models not specified
+        if not all([self.main_model, self.json_model, self.replicate_model]):
+            self.load_model_settings()
+
     def get_output_path(self, filename: str) -> Path:
         """Get the full path for an output file."""
         return self.output_dir / filename
+
+    def load_model_settings(self, settings_path: str = "settings.json"):
+        """Load model settings from the settings file."""
+        try:
+            with open(settings_path) as f:
+                settings = json.load(f)
+                # Set default model values if not already set
+                if not self.main_model:
+                    self.main_model = settings.get("models", {}).get("openai", "openai/chatgpt-4o-latest")
+                if not self.json_model:
+                    self.json_model = settings.get("models", {}).get("gemini", "google/gemini-2.0-flash-001")
+                if not self.replicate_model:
+                    self.replicate_model = settings.get("models", {}).get("replicate", "black-forest-labs/flux-1.1-pro")
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            print(f"Warning: Could not load model settings from {settings_path}: {e}")
+            # Set fallback defaults
+            if not self.main_model:
+                self.main_model = "openai/chatgpt-4o-latest"
+            if not self.json_model:
+                self.json_model = "google/gemini-2.0-flash-001"
+            if not self.replicate_model:
+                self.replicate_model = "black-forest-labs/flux-1.1-pro"
+
+    def initialize_clients(self, settings_path: str = "settings.json"):
+        """Initialize API clients based on settings."""
+        # Load API keys from settings
+        with open(settings_path) as f:
+            settings = json.load(f)
+            openrouter_api_key = settings["openrouter"]["apiKey"]
+            replicate_api_key = settings["replicate"]["apiKey"]
+
+        # Set Replicate API token as environment variable
+        os.environ["REPLICATE_API_TOKEN"] = replicate_api_key
+
+        # Initialize OpenAI client with OpenRouter configuration
+        self.openai_client = OpenAI(
+            base_url=self.openrouter_base_url,
+            api_key=openrouter_api_key,
+        )
+
+        return self.openai_client
 
 
 @dataclass
