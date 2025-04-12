@@ -118,7 +118,7 @@
   width: 49.5mm;
   height: 24mm;
   padding: 0.5mm 0.5mm 1mm 5.5mm;
-  /* Force text color to black so fields aren’t black-on-black */
+  /* Force text color to black so fields aren't black-on-black */
   color: #000;
 }
 .mtg-card.planeswalker-large .oracle.planeswalker-oracle {
@@ -196,6 +196,117 @@
 /* Adjust the footer position for planeswalkers */
 .mtg-card.planeswalker .footer {
   top: 83mm;
+}
+
+/* -------------------- Saga Specific Styles -------------------- */
+
+/* Saga specific adjustments to base elements */
+.mtg-card.saga .inner-background {
+  top: 2.5mm;
+  height: 83.5mm;
+}
+
+.mtg-card.saga .inner-frame {
+  top: 3.66mm;
+  width: 58.5mm;
+  margin: 0 0 0 -1mm;
+}
+
+.mtg-card.saga .mid-line,
+.mtg-card.saga .top-line {
+  top: 4.2mm;
+  left: 0.1mm;
+}
+
+.mtg-card.saga .mid-line {
+  top: 75.2mm;
+}
+
+/* Illustration positioning for saga cards */
+.mtg-card.saga .illustration {
+  position: absolute;
+  width: 27.3mm;
+  height: 64.3mm;
+  top: 10mm;
+  left: 31.8mm;
+  outline-offset: 0;
+  overflow: hidden;
+  background-color: yellow;
+  background-size: auto 100% !important;
+  background-position: center !important;
+}
+
+/* Saga oracle structure */
+.saga-oracle {
+  position: absolute;
+  left: 4.9mm;
+  top: 9.95mm;
+  width: 26.6mm;
+  height: 64.3mm;
+  background-size: cover;
+  background-image: var(--saga-text-box-image);
+  background-repeat: no-repeat;
+  font-family: "MPlantin";
+  color: black;
+}
+
+.saga-frame {
+  position: absolute;
+  top: 0;
+  left: -2.8mm;
+  width: 10mm;
+  height: 100%;
+  background-size: 58.5mm;
+  background-position: 0 -6.3mm;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.saga-reminder {
+  height: 13.3mm;
+  font-size: 7.3pt;
+  line-height: 7.3pt;
+  padding: 0.5mm 0.7mm 2.4mm;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.saga-steps {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  flex-direction: column;
+  gap: 0.8mm;
+  padding-left: 2.15mm;
+  height: 47.5mm;
+  box-sizing: border-box;
+}
+
+.saga-step {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  box-shadow: 0 -0.35mm 0.5mm rgba(0, 0, 0, 0.12);
+  padding: 1.35mm;
+  flex-grow: 1;
+  line-height: 1em;
+}
+
+.saga-step-number {
+  position: absolute;
+  width: 5mm;
+  top: 50%;
+  transform: translateY(-50%);
+  left: -4.65mm;
+  z-index: 4;
+}
+
+.saga-step-number img {
+  width: 5mm;
 }
 
 /* ======================== BACKGROUND & FRAME ======================== */
