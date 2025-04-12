@@ -345,7 +345,14 @@ Return only the JSON array with no additional text or explanation."""
     def initialize_set(self) -> None:
         """Initialize the set by loading inspiration cards and generating the theme."""
         self.load_inspiration_cards()
-        self.generate_set_theme()
+
+        # Check if a complete theme override is provided
+        if self.config.complete_theme_override:
+            print("Using provided complete theme override instead of generating a new theme")
+            self.set_theme = self.config.complete_theme_override
+        else:
+            # Generate a new theme using the theme prompt
+            self.generate_set_theme()
 
         # Reset collector number counter at the start of set generation
         self.collector_number_counter = 1

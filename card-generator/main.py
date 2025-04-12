@@ -230,14 +230,51 @@ class MTGGeneratorOrchestrator:
 
 
 async def main():
+    # Example complete theme override (you can pass your own theme text here)
+    complete_theme = """
+    # The Shattered Realms of Eltarion
+
+    ## World Description
+    Eltarion was once a harmonious world where five elemental planes intersected in perfect balance. A cataclysmic event called the Convergence shattered this unity, creating unstable overlapping zones where the elemental powers chaotically blend. The denizens of each realm now struggle to survive in this fractured landscape, forming uneasy alliances or waging territorial wars.
+
+    ## Key Factions
+    - The Luminari Conclave (White): Scholars and mages who seek to restore balance through knowledge and order
+    - The Tidecallers (Blue): Adaptable mystics who harness the unpredictable flow of mana through the shattered realms
+    - The Shadowbond Covenant (Black): Opportunists who believe only the strongest should survive and rule the new world
+    - The Volcanic Warband (Red): Passionate warriors embracing the chaos as a path to freedom and self-expression
+    - The Wildgrowth Collective (Green): Druids and beasts attempting to heal the natural order through aggressive restoration
+
+    ## Creature Types
+    The set prominently features Elementals, Wizards, Warriors, Spirits, Beasts, Angels, Demons, Dragons, Merfolk, and Elves, with many creatures exhibiting hybrid characteristics from the blending of realms.
+
+    ## Mechanical Themes
+    - "Convergence" cards that gain additional effects when you control lands of different types
+    - Multicolor emphasis reflecting the blending of elemental powers
+    - Land transformation and land-matters mechanics
+    - Tribal elements for the major factions
+    - Exile and return mechanics representing the unstable nature of reality
+
+    ## Synergies
+    - Land-based ramp strategies that power multicolor threats
+    - Faction-based tribal synergies with cross-faction hybrid creatures
+    - Control strategies using reality-warping exile effects
+    - Aggressive decks exploiting elemental chaos effects
+
+    ## Play Styles
+    The set supports aggressive tribal strategies, midrange value-generating decks, controlling reality-manipulation decks, and five-color convergence ramp decks.
+    """
+
     # Set configuration
     config = Config(
         csv_file_path="./assets/mtg_cards_english.csv",
         inspiration_cards_count=50,  # Number of cards to use as inspiration
         batches_count=20,  # Number of batches to generate
 
-        # Optional theme prompt to guide set generation
+        # Optional theme prompt (will be ignored if complete_theme_override is provided)
         theme_prompt=None,
+
+        # Uncomment the line below to use a complete theme override instead of generating one
+        # complete_theme_override=complete_theme,
 
         # Basic land generation
         generate_basic_lands=True,

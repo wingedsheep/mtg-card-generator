@@ -1,10 +1,10 @@
 # MTG Card Generator
 
-Generate complete Magic: The Gathering card sets using AI, including card mechanics, flavor text, and artwork. The generator creates thematically cohesive sets with synergistic mechanics based on randomly generated themes.
+Generate complete Magic: The Gathering card sets using AI, including card mechanics, flavor text, and artwork. The generator creates thematically cohesive sets with synergistic mechanics based on randomly generated themes or your own custom themes.
 
 ## Features
 
-- **Theme Generation**: Creates unique, cohesive themes for Magic: The Gathering sets
+- **Theme Options**: Either generate unique, cohesive themes automatically or provide your own complete theme override
 - **Card Generation**: Generates complete cards including:
   - Card names and mana costs
   - Card types and abilities
@@ -99,7 +99,7 @@ python main.py
 ```
 
 This will:
-- Generate a random set theme
+- Generate a random set theme (or use your provided theme)
 - Create cards with balanced colors and rarities
 - Generate art for each card
 - Convert cards to the proper rendering format
@@ -125,10 +125,19 @@ You can modify the generation parameters in `main.py`:
 config = Config(
     inspiration_cards_count=50,  # Number of cards to use as inspiration
     batches_count=1,            # Number of batches to generate
+    
+    # Theme options (choose one):
+    theme_prompt="Warhammer Fantasy",  # Provides a hint for theme generation
+    # OR
+    complete_theme_override="Your complete custom theme text here...",  # Use this for a fully custom theme
+    
+    # Rarity distribution
     mythics_per_batch=1,        # Mythic rares per batch
     rares_per_batch=1,          # Rares per batch
     uncommons_per_batch=1,      # Uncommons per batch
     commons_per_batch=1,        # Commons per batch
+    
+    # Color distribution
     color_distribution={        # Target color distribution
         "W": 0.2,  # White
         "U": 0.2,  # Blue
@@ -137,6 +146,32 @@ config = Config(
         "G": 0.2   # Green
     }
 )
+```
+
+### Custom Theme Structure
+
+When providing a `complete_theme_override`, your theme should include:
+
+```
+# Theme Title
+
+## World Description
+[Detailed description of the world/setting]
+
+## Key Factions
+[List and description of major factions/groups]
+
+## Creature Types
+[Common creature types in the set]
+
+## Mechanical Themes
+[Key gameplay mechanics and themes]
+
+## Synergies
+[How different card types and mechanics work together]
+
+## Play Styles
+[What play styles the set supports]
 ```
 
 ## Basic Land Generation

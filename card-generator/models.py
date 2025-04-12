@@ -15,6 +15,7 @@ class Config:
     inspiration_cards_count: int = 100
     batches_count: int = 20
     theme_prompt: Optional[str] = None
+    complete_theme_override: Optional[str] = None  # New parameter for complete theme override
     set_id: str = None
     output_dir: Path = None
 
