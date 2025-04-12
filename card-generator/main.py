@@ -26,6 +26,9 @@ class MTGGeneratorOrchestrator:
         # Art generator will be initialized after we have the theme
         self.art_generator = None
 
+        # Track the collector number counter to pass to land generator
+        self.collector_number_counter = 1
+
     async def generate_complete_set(self) -> Dict:
         """Generate a complete MTG set including cards, art, and rendered images.
         Process each batch completely (cards, art, rendering) before moving to the next batch."""
@@ -77,10 +80,20 @@ class MTGGeneratorOrchestrator:
             print(f"\n--- Statistics after Batch {batch_num} ---")
             self._print_statistics(stats)
 
+            # Update collector number counter for lands
+            if batch_cards:
+                # Find the highest collector number in the set so far
+                max_collector_num = max(
+                    int(card.collector_number) if card.collector_number.isdigit() else 0
+                    for card in all_processed_cards
+                )
+                self.collector_number_counter = max_collector_num + 1
+
         # Generate basic lands if enabled
         if self.config.generate_basic_lands:
             print("\n=== Generating Basic Lands ===")
-            land_generator = MTGLandGenerator(self.config, theme)
+            # Pass the current collector number to continue from where we left off
+            land_generator = MTGLandGenerator(self.config, theme, self.collector_number_counter)
             land_cards = land_generator.generate_basic_lands()
 
             # Add lands to the processed cards
@@ -178,7 +191,7 @@ class MTGGeneratorOrchestrator:
                 "config": {
                     "inspiration_cards_count": self.config.inspiration_cards_count,
                     "total_cards": self.config.batches_count * (
-                                self.config.mythics_per_batch + self.config.rares_per_batch + self.config.uncommons_per_batch + self.config.commons_per_batch),
+                            self.config.mythics_per_batch + self.config.rares_per_batch + self.config.uncommons_per_batch + self.config.commons_per_batch),
                     "theme_prompt": self.config.theme_prompt,
                     "rarity_distribution": {
                         "mythic_per_batch": self.config.mythics_per_batch,

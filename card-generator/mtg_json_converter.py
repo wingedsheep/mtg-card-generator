@@ -37,7 +37,14 @@ class MTGJSONConverter:
                 end_idx = response_text.rfind('}')
                 if start_idx != -1 and end_idx != -1:
                     json_text = response_text[start_idx:end_idx + 1]
-                    return json.loads(json_text)
+                    converted_json = json.loads(json_text)
+
+                    # Add original_name field for basic lands with variation numbers
+                    if any(land_type in card_data["name"] for land_type in
+                           ["Plains", "Island", "Swamp", "Mountain", "Forest"]) and " " in card_data["name"]:
+                        converted_json["original_name"] = card_data["name"]
+
+                    return converted_json
                 raise ValueError("No valid JSON object found in response")
 
             except Exception as e:
@@ -159,6 +166,37 @@ class MTGJSONConverter:
                     "artist": "Vincent Bons",
                     "flavor_text": "The Scavenger Tribes see opportunity in fire and ruin."
                 }
+            },
+            {
+                "input": {
+                    "name": "Plains 1",  # Example of a basic land with variation number
+                    "mana_cost": "",
+                    "type": "Basic Land — Plains",
+                    "rarity": "Common",
+                    "power": None,
+                    "toughness": None,
+                    "text": "",
+                    "flavor": "",
+                    "colors": ["W"],
+                    "image_path": "output/20250208_152032/Plains_1.png",
+                    "collector_number": "201"
+                },
+                "output": {
+                    "name": "Plains",  # Note: The renderer expects just "Plains" without the variation number
+                    "layout": "normal",
+                    "collector_number": "201",
+                    "image_uris": {
+                        "art_crop": "../card-generator/output/20250208_152032/Plains_1.png"
+                    },
+                    "mana_cost": "",
+                    "type_line": "Basic Land - Plains",
+                    "oracle_text": "",
+                    "colors": ["W"],
+                    "set": "thb",
+                    "rarity": "common",
+                    "artist": "Vincent Bons",
+                    "flavor_text": ""
+                }
             }
         ]
 
@@ -186,6 +224,8 @@ class MTGJSONConverter:
         13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
         14. Add an authority field for Planeswalker cards
         15. Basic land cards have no text, so set text to "".
+        16. For basic lands (Plains, Island, Swamp, Mountain, Forest), if the name includes a variation number (e.g., "Plains 1"), 
+            remove the variation number in the output name, but keep the image path as is.
 
         Here are some examples:
 
@@ -203,6 +243,11 @@ class MTGJSONConverter:
         Input: {json.dumps(example_pairs[2]["input"], indent=2)}
 
         Output: {json.dumps(example_pairs[2]["output"], indent=2)}
+
+        Example 4 (Basic Land):
+        Input: {json.dumps(example_pairs[3]["input"], indent=2)}
+
+        Output: {json.dumps(example_pairs[3]["output"], indent=2)}
 
         Now convert this card data to the same format:
         {json.dumps(card_data, indent=2)}

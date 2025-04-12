@@ -86,8 +86,14 @@ class MTGCardRenderer:
                         images_dir = self.config.output_dir / "card_images"
                         images_dir.mkdir(exist_ok=True)
 
-                        # Define output image path
-                        output_path = images_dir / f"{card_data['name'].replace(' ', '_')}.png"
+                        # Define output image path - Use original_name if it exists, otherwise use name
+                        # This ensures basic land variations get unique filenames
+                        if "original_name" in card_data:
+                            output_filename = card_data["original_name"].replace(' ', '_')
+                        else:
+                            output_filename = card_data["name"].replace(' ', '_')
+
+                        output_path = images_dir / f"{output_filename}.png"
 
                         # Get the original bounding box of the element
                         box = await card_element.bounding_box()

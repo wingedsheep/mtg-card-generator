@@ -9,13 +9,14 @@ import io
 
 
 class MTGLandGenerator:
-    def __init__(self, config: Config, theme: str):
+    def __init__(self, config: Config, theme: str, start_collector_number: int = None):
         self.config = config
         self.theme = theme
         self.client = config.openai_client
         self.land_types = ["Plains", "Island", "Swamp", "Mountain", "Forest"]
         self.land_colors = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G"}
-        self.collector_number_counter = 500  # Start land collection numbers at 500
+        # Use the passed collector number if provided, otherwise default to 500
+        self.collector_number_counter = start_collector_number if start_collector_number is not None else 500
 
     def generate_land_prompt(self, land_type: str) -> str:
         """Generate a unique art prompt for a basic land."""
@@ -54,10 +55,10 @@ Return only the art prompt text with no additional explanation."""
 
         return completion.choices[0].message.content
 
-    def generate_land_card(self, land_type: str) -> Card:
+    def generate_land_card(self, land_type: str, variation: int) -> Card:
         """Create a Card object for a basic land."""
         card = Card(
-            name=f"{land_type}",
+            name=f"{land_type} {variation}",  # Include variation number to make each land unique
             mana_cost="",
             type=f"Basic Land — {land_type}",
             rarity="Common",
@@ -71,7 +72,7 @@ Return only the art prompt text with no additional explanation."""
             art_prompt=None,
             image_path=None,
             collector_number=str(self.collector_number_counter),
-            description=f"A {land_type.lower()} from which {self.land_colors.get(land_type, '')} mana can be drawn."
+            description=f"A {land_type.lower()} from which {self.land_colors.get(land_type, '')} mana can be drawn. Variation {variation}."
         )
         self.collector_number_counter += 1
         return card
@@ -192,8 +193,8 @@ Return only the art prompt text with no additional explanation."""
             for variation in range(1, self.config.land_variations_per_type + 1):
                 print(f"  Processing {land_type} variation {variation}...")
 
-                # Create the land card
-                land_card = self.generate_land_card(land_type)
+                # Create the land card with variation number
+                land_card = self.generate_land_card(land_type, variation)
 
                 # Generate art prompt
                 art_prompt = self.generate_land_prompt(land_type)
