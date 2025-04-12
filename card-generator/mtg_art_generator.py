@@ -21,7 +21,18 @@ class MTGArtGenerator:
 
 Consider this theme when creating the art prompt. The art should reflect both the card's individual characteristics and the overall set theme.""" if self.theme else ""
 
+        # Add specific instructions for Saga cards
+        saga_instructions = ""
+        if "Saga" in card.type:
+            saga_instructions = """
+IMPORTANT: This is a Saga card which requires VERTICAL art composition (portrait orientation). 
+The art should be tall rather than wide. Saga cards display art along the right side of the card in a vertical format.
+Create a VERTICAL composition that works well with the Saga card layout.
+"""
+
         prompt = f"""Create a detailed art prompt for a Magic: The Gathering card with the following details:
+
+{saga_instructions}
 
 Theme:
 {theme_context}
@@ -137,6 +148,46 @@ Return only the prompt text with no additional explanation."""
         cropped_image.save(output, format=image.format or 'PNG')
         return output.getvalue()
 
+    def crop_to_4x5_ratio(self, image_data):
+        """Crop an image to 4:5 aspect ratio (vertical), keeping the center portion.
+
+        Args:
+            image_data: Image data as bytes
+
+        Returns:
+            bytes: The cropped image data
+        """
+        # Open the image using PIL
+        image = Image.open(BytesIO(image_data))
+        width, height = image.size
+
+        # Calculate current aspect ratio
+        current_ratio = width / height
+        target_ratio = 4 / 5  # Vertical aspect ratio (inverse of 5:4)
+
+        if abs(current_ratio - target_ratio) < 0.01:
+            # Already close enough to 4:5, return as-is
+            return image_data
+
+        # Calculate new dimensions
+        if current_ratio > target_ratio:
+            # Image is too wide - crop width
+            new_width = int(height * target_ratio)
+            left = (width - new_width) // 2
+            right = left + new_width
+            cropped_image = image.crop((left, 0, right, height))
+        else:
+            # Image is too tall - crop height
+            new_height = int(width / target_ratio)
+            top = (height - new_height) // 2
+            bottom = top + new_height
+            cropped_image = image.crop((0, top, width, bottom))
+
+        # Convert back to bytes
+        output = BytesIO()
+        cropped_image.save(output, format=image.format or 'PNG')
+        return output.getvalue()
+
     def generate_card_art(self, card: Card, max_retries: int = 5, retry_delay: int = 3) -> tuple[str, bytes]:
         """Generate both art prompt and image for a card with retry logic.
 
@@ -163,8 +214,8 @@ Return only the prompt text with no additional explanation."""
                 active_model = self.config.get_active_replicate_model()
                 print(f"Using image model: {active_model}")
 
-                # Configure model-specific parameters
-                model_params = self._get_model_params(art_prompt)
+                # Configure model-specific parameters, passing the card to check if it's a Saga
+                model_params = self._get_model_params(art_prompt, card)
 
                 # Keep track of the original aspect ratio for later processing
                 original_aspect_ratio = model_params.get("aspect_ratio", "5:4")
@@ -183,10 +234,16 @@ Return only the prompt text with no additional explanation."""
                     import requests
                     image_data = requests.get(image_response).content
 
-                # Check if we need to crop (only if aspect ratio != 5:4)
-                if original_aspect_ratio != "5:4":
-                    print(f"Cropping image from {original_aspect_ratio} to 5:4...")
-                    image_data = self.crop_to_5x4_ratio(image_data)
+                # Check if we need to crop
+                if original_aspect_ratio != "5:4" and original_aspect_ratio != "4:5":
+                    # For Saga cards (vertical)
+                    if "Saga" in card.type:
+                        print(f"Cropping image from {original_aspect_ratio} to 4:5 (vertical for Saga)...")
+                        image_data = self.crop_to_4x5_ratio(image_data)
+                    else:
+                        # For regular cards (horizontal)
+                        print(f"Cropping image from {original_aspect_ratio} to 5:4...")
+                        image_data = self.crop_to_5x4_ratio(image_data)
 
                 # Create a BytesIO object that behaves like a file
                 return art_prompt, BytesIO(image_data)
@@ -199,31 +256,61 @@ Return only the prompt text with no additional explanation."""
                     print(f"Attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
 
-    def _get_model_params(self, prompt: str) -> dict:
+    def _get_model_params(self, prompt: str, card: Card = None) -> dict:
         """Get model-specific parameters based on the selected image model."""
         active_model_name = self.config.image_model
 
+        # Check if this is a Saga card to determine orientation
+        is_saga = card and "Saga" in card.type
+
         if active_model_name == "flux":
-            return {
-                "prompt": prompt,
-                "aspect_ratio": "5:4",
-                "safety_tolerance": 6,
-                "prompt_upsampling": True
-            }
+            if is_saga:
+                # Vertical aspect ratio for Sagas (inverse of standard)
+                return {
+                    "prompt": prompt,
+                    "aspect_ratio": "9:16",  # Vertical for Sagas
+                    "safety_tolerance": 6,
+                    "prompt_upsampling": True
+                }
+            else:
+                # Standard horizontal aspect ratio
+                return {
+                    "prompt": prompt,
+                    "aspect_ratio": "5:4",
+                    "safety_tolerance": 6,
+                    "prompt_upsampling": True
+                }
         elif active_model_name == "imagen":
-            return {
-                "prompt": prompt,
-                "aspect_ratio": "4:3",  # Keep original aspect ratio for generation
-                "safety_filter_level": "block_only_high"
-            }
+            if is_saga:
+                # Vertical aspect ratio for Sagas
+                return {
+                    "prompt": prompt,
+                    "aspect_ratio": "9:16",  # Vertical for Sagas
+                    "safety_filter_level": "block_only_high"
+                }
+            else:
+                # Standard horizontal aspect ratio
+                return {
+                    "prompt": prompt,
+                    "aspect_ratio": "4:3",
+                    "safety_filter_level": "block_only_high"
+                }
         else:
             # Default to Flux parameters
-            return {
-                "prompt": prompt,
-                "aspect_ratio": "5:4",
-                "safety_tolerance": 6,
-                "prompt_upsampling": True
-            }
+            if is_saga:
+                return {
+                    "prompt": prompt,
+                    "aspect_ratio": "9:16",
+                    "safety_tolerance": 6,
+                    "prompt_upsampling": True
+                }
+            else:
+                return {
+                    "prompt": prompt,
+                    "aspect_ratio": "5:4",
+                    "safety_tolerance": 6,
+                    "prompt_upsampling": True
+                }
 
     def process_card(self, card: Card) -> Card:
         """Process a single card, generating art and saving data."""
