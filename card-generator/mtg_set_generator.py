@@ -86,7 +86,7 @@ class MTGSetGenerator:
         """Convert card text descriptions to JSON format."""
         prompt = f"""Convert the following Magic: The Gathering card descriptions into a JSON array.
 Each card has the following fields: name, mana_cost, type, rarity, power (null if not creature), 
-toughness (null if not creature), authority (null if not planeswalker), text, flavor, colors (array of W, U, B, R, G or none if colorless), description.
+toughness (null if not creature), loyalty (null if not planeswalker), text, flavor, colors (array of W, U, B, R, G or none if colorless), description.
 
 class Card:
     name: str
@@ -98,7 +98,7 @@ class Card:
     flavor: Optional[str] = None,
     power: Optional[str] = None
     toughness: Optional[str] = None
-    authority: Optional[str] = None
+    loyalty: Optional[str] = None
     set_name: str = ""
     art_prompt: Optional[str] = None
     image_path: Optional[str] = None
@@ -318,7 +318,8 @@ Return only the JSON array with no additional text or explanation."""
         Well known mechanics like flying, haste, etc. do not need explanations.
         - Think about synergy in the set.
         - Look at the rarity instructions.
-        - Multi color cards are fine, but they appear less frequently than mono color cards.
+        - Multi color cards are fine, but they appear less frequently than mono color cards.\
+        - No dual sided cards
 
         First make a plan for the rare and mythic cards of this batch, what are they going to be? (notable characters described in the theme are fine as long as they are not already in the set).
         Then think of what would be a good addition to add some variety to the set and make it more interesting. What could we add to the uncommon and common cards?
@@ -336,7 +337,7 @@ Return only the JSON array with no additional text or explanation."""
         Mana Cost: [cost]
         Type: [type]
         Power/Toughness: [P/T] (if creature)
-        Authority: [authority] (if planeswalker)
+        Loyalty: [loyalty] (if planeswalker)
         Rules Text: [text]
         Flavor Text: [flavor]
         Colors: [colors]

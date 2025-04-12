@@ -67,7 +67,7 @@ Return only the art prompt text with no additional explanation."""
             colors=[self.land_colors.get(land_type, "")],
             power=None,
             toughness=None,
-            authority=None,
+            loyalty=None,
             set_name="",
             art_prompt=None,
             image_path=None,

@@ -161,7 +161,7 @@ class MTGJSONConverter:
                                    "create a 5/5 red Elemental creature token with trample.",
                     "colors": ["RG"],
                     "set": "thb",
-                    "authority": None,
+                    "loyalty": None,
                     "rarity": "rare",
                     "artist": "Vincent Bons",
                     "flavor_text": "The Scavenger Tribes see opportunity in fire and ruin."
@@ -197,6 +197,38 @@ class MTGJSONConverter:
                     "artist": "Vincent Bons",
                     "flavor_text": ""
                 }
+            },
+            {
+                "input": {
+                    "name": "Path of Retold Loyalty",
+                    "mana_cost": "{2}{W}",
+                    "type": "Enchantment — Saga",
+                    "rarity": "Rare",
+                    "power": None,
+                    "toughness": None,
+                    "text": "I — Create a 1/1 white Spirit creature token with flying.\nII — Return target creature card with mana value 2 or less from your graveyard to the battlefield tapped.\nIII — Creatures you control get +1/+1 and gain lifelink until end of turn.",
+                    "flavor": "A pale mosaic forms the path of pledge and penance—etched across a spirit's journey from defeat to renewed faith.",
+                    "colors": ["W"],
+                    "image_path": "output/first-complete-set/Path_of_Retold_Loyalty.png",
+                    "collector_number": "238"
+                },
+                "output": {
+                    "name": "Path of Retold Loyalty",
+                    "layout": "normal",
+                    "collector_number": "238",
+                    "image_uris": {
+                        "art_crop": "../card-generator/output/first-complete-set/Path_of_Retold_Loyalty.png"
+                    },
+                    "mana_cost": "{2}{W}",
+                    "type_line": "Enchantment - Saga",
+                    "oracle_text": "I — Create a 1/1 white Spirit creature token with flying.\n\nII — Return target creature card with mana value 2 or less from your graveyard to the battlefield tapped.\n\nIII — Creatures you control get +1/+1 and gain lifelink until end of turn.",
+                    "colors": ["W"],
+                    "set": "thb",
+                    "rarity": "rare",
+                    "artist": "Vincent Bons",
+                    "authority": None,
+                    "flavor_text": "A pale mosaic forms the path of pledge and penance—etched across a spirit's journey from defeat to renewed faith."
+                }
             }
         ]
 
@@ -221,11 +253,13 @@ class MTGJSONConverter:
         10. Convert the card text to oracle_text, handling line breaks and quotes properly
         11. Convert type to type_line
         12. Convert flavor to flavor_text (when present)
-        13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic
-        14. Add an authority field for Planeswalker cards
+        13. Make rarity lowercase in the output, and use only from values: common, uncommon, rare, mythic (Mythic Rare should become mythic in the json format)
+        14. Add a loyalty field for Planeswalker cards
         15. Basic land cards have no text, so set text to "".
         16. For basic lands (Plains, Island, Swamp, Mountain, Forest), if the name includes a variation number (e.g., "Plains 1"), 
             remove the variation number in the output name, but keep the image path as is.
+        17. For Saga cards, include an "authority" field with a value of None.
+        18. For Saga cards, preserve the roman numerals (I, II, III, IV) in the oracle_text, followed by a proper em dash (—).
 
         Here are some examples:
 
@@ -248,6 +282,11 @@ class MTGJSONConverter:
         Input: {json.dumps(example_pairs[3]["input"], indent=2)}
 
         Output: {json.dumps(example_pairs[3]["output"], indent=2)}
+
+        Example 5 (Saga):
+        Input: {json.dumps(example_pairs[4]["input"], indent=2)}
+
+        Output: {json.dumps(example_pairs[4]["output"], indent=2)}
 
         Now convert this card data to the same format:
         {json.dumps(card_data, indent=2)}

@@ -342,8 +342,10 @@ function computeCardProps(card, currentFace = 0) {
     else colors = [];
 
     // Fall back to card color identity if no colors found
-    if (colors.length === 0 && card.color_identity && card.color_identity.length > 0) {
-      colors = card.color_identity;
+    if (colors.length === 0) {
+        // If saga card, use color Land, since Artifact does not exist
+        if (props.is_saga) colors = ["Land"];
+        else colors = ["Artifact"];
     }
 
     // Remove duplicates and get unique colors
