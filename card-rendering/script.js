@@ -629,7 +629,8 @@ function buildSagaCardHTML(props, card) {
       </div>
     </div>
     <div class="oracle saga-oracle">
-      <div class="saga-reminder">${props.saga_reminder}</div>
+      <div class="saga-reminder"><i>
+(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)</i></div>
       <div class="saga-frame"></div>
       <div class="saga-steps">
         ${sagaSteps.map(step => `
