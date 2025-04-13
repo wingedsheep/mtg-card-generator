@@ -91,7 +91,8 @@ const IconsHelper = (() => {
   };
 
   function getManaIcon(symbol) {
-    return mana_symbols[symbol] ? mana_symbols[symbol].svg_uri : "";
+    const normalizedSymbol = symbol.replace("/", ""); // Remove the slash
+    return mana_symbols[normalizedSymbol] ? mana_symbols[normalizedSymbol].svg_uri : "";
   }
 
   function parseManaCost(manaCostString) {
