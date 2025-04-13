@@ -188,7 +188,7 @@ Return only the prompt text with no additional explanation."""
         cropped_image.save(output, format=image.format or 'PNG')
         return output.getvalue()
 
-    def generate_card_art(self, card: Card, max_retries: int = 5, retry_delay: int = 3) -> tuple[str, bytes]:
+    def generate_card_art(self, card: Card, max_retries: int = 5, retry_delay: int = 3) -> tuple[str, BytesIO]:
         """Generate both art prompt and image for a card with retry logic.
 
         Args:
