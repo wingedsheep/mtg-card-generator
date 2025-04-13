@@ -48,7 +48,7 @@ function resizeOracleText(oracle, cardEl, needsSpace) {
   const boxWidth = oracle.clientWidth;
 
   // Reduce font size until content fits
-  while ((oracle.scrollHeight > boxHeight || oracle.scrollWidth > boxWidth) && fontSize > 0.6) {
+  while ((oracle.scrollHeight > boxHeight || oracle.scrollWidth > boxWidth) && fontSize > 0.5) {
     fontSize -= 0.05;
     oracle.style.fontSize = `${fontSize}em`;
   }
@@ -385,7 +385,7 @@ function computeCardProps(card, currentFace = 0) {
   props.colors = computeColors(props.card_face);
 
   // Determine boxes colors.
-  if (props.is_vehicle) props.boxes_colors = "Vehicle";
+  if (props.is_vehicle) props.boxes_colors = "Artifact";
   else if (props.is_land)
     props.boxes_colors = props.colors.length > 2 && props.colors.length < 5 ? "Gold" : "Land";
   else
