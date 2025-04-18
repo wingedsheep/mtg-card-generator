@@ -77,7 +77,7 @@ class MTGCardRenderer:
                     ''')
 
                     # Wait a short moment to allow the transform to take effect
-                    await page.wait_for_timeout(500)
+                    await page.wait_for_timeout(1000)
 
                     # Retrieve the .mtg-card element
                     card_element = await page.query_selector('.mtg-card')
