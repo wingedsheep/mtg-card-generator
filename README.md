@@ -15,6 +15,7 @@ Generate complete Magic: The Gathering card sets using AI, including card mechan
 - **Art Generation**: Creates unique artwork for each card using AI
 - **Card Rendering**: Renders cards in the official MTG card frame style
 - **Format Support**: Outputs cards in both JSON and PNG formats
+- **Tabletop Simulator Support**: Convert card images into properly formatted deck sheets for Tabletop Simulator
 
 ## Generated example Cards
 
@@ -186,6 +187,48 @@ You can configure:
 
 - Whether to generate basic lands (`generate_basic_lands`)
 - How many variations to create for each type (`land_variations_per_type`)
+
+## Tabletop Simulator Integration
+
+The project includes a TTS Deck Converter tool (`tts_deck_converter.py`) that arranges your generated card images into grid layouts compatible with Tabletop Simulator.
+
+### TTS Converter Features
+
+- Creates properly formatted card sheets for importing into Tabletop Simulator
+- Automatically handles large sets by creating multiple sheets when needed
+- Configurable grid dimensions, card sizes, and output quality
+- Optional card sorting for easier organization
+
+### Using the TTS Converter
+
+```bash
+cd card-generator
+python tts_deck_converter.py --input-dir output/card_images --output-file tts_deck.jpg
+```
+
+#### Available Options
+
+```
+--input-dir DIRECTORY    Directory containing the card images [default: ./cards]
+--output-file FILENAME   Output JPG filename base [default: card_sheet.jpg]
+--max-rows INT           Maximum number of rows in the grid [default: 7]
+--max-columns INT        Maximum number of columns in the grid [default: 10]
+--card-width WIDTH       Width of each card in pixels [default: 500]
+--card-height HEIGHT     Height of each card in pixels [default: 726]
+--quality QUALITY        JPG quality (1-100) [default: 90]
+--sort                   Sort files alphabetically [default: False]
+```
+
+### Importing Into Tabletop Simulator
+
+1. Launch Tabletop Simulator
+2. Create a new game or join an existing one
+3. Right-click on the table and select "Objects" > "Components" > "Custom" > "Deck"
+4. In the custom deck dialog:
+   - Set Face/Back URL to your generated card sheet (e.g., http://yourhost.com/tts_deck.jpg)
+   - Enter the number of Cards Horizontally (columns) and Cards Vertically (rows)
+   - Adjust other settings as needed
+5. Click "Import" to create your custom deck
 
 ## Card Rendering Details
 
