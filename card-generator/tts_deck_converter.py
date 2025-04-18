@@ -5,28 +5,18 @@ TTS Deck Converter
 Converts individual card images (PNG/WebP) into grid layout JPGs for Tabletop Simulator.
 Creates multiple output files if needed to respect maximum grid dimensions.
 
-Usage:
-    python tts_deck_converter.py [options]
-
-Options:
-    --input-dir DIRECTORY    Directory containing the card images [default: ./cards]
-    --output-file FILENAME   Output JPG filename base [default: card_sheet.jpg]
-    --max-rows INT           Maximum number of rows in the grid [default: 7]
-    --max-columns INT        Maximum number of columns in the grid [default: 10]
-    --card-width WIDTH       Width of each card in pixels [default: 500]
-    --card-height HEIGHT     Height of each card in pixels [default: 726]
-    --quality QUALITY        JPG quality (1-100) [default: 90]
-    --sort                   Sort files alphabetically [default: False]
+This version uses a GUI folder selector dialog instead of command-line arguments.
 """
 
 import os
 import glob
 import math
-import argparse
+import tkinter as tk
+from tkinter import filedialog, simpledialog
 from PIL import Image
 
 
-def get_image_files(directory, extensions=('.png', '.webp')):
+def get_image_files(directory, extensions=('.png', '.webp', '.jpg', '.jpeg')):
     """Get all image files with the specified extensions from the directory."""
     files = []
     for ext in extensions:
@@ -92,22 +82,36 @@ def create_card_sheets(image_files, max_rows, max_columns, card_width, card_heig
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert card images to TTS-compatible card sheets')
-    parser.add_argument('--input-dir', default='./cards', help='Directory containing card images')
-    parser.add_argument('--output-file', default='card_sheet.jpg', help='Output JPG filename base')
-    parser.add_argument('--max-rows', type=int, default=7, help='Maximum number of rows in the grid')
-    parser.add_argument('--max-columns', type=int, default=10, help='Maximum number of columns in the grid')
-    parser.add_argument('--card-width', type=int, default=500, help='Width of each card in pixels')
-    parser.add_argument('--card-height', type=int, default=726, help='Height of each card in pixels')
-    parser.add_argument('--quality', type=int, default=90, help='JPG quality (1-100)')
-    parser.add_argument('--sort', action='store_true', help='Sort files alphabetically')
+    # Create a root window and hide it (we only need the dialogs)
+    root = tk.Tk()
+    root.withdraw()
 
-    args = parser.parse_args()
+    # Show directory selection dialog
+    input_dir = filedialog.askdirectory(title="Select folder containing card images")
+    if not input_dir:
+        print("No folder selected. Exiting.")
+        return
+
+    # Default values
+    max_rows = 7
+    max_columns = 10
+    card_width = 500
+    card_height = 726
+    quality = 90
+    sort_files = True
+
+    # Get output folder and base filename
+    output_dir = filedialog.askdirectory(title="Select folder to save card sheets", initialdir="./output")
+    if not output_dir:
+        print("No output folder selected. Exiting.")
+        return
+
+    output_file = os.path.join(output_dir, "card_sheet.jpg")
 
     # Get card image files
-    image_files = get_image_files(args.input_dir)
+    image_files = get_image_files(input_dir)
     if not image_files:
-        print(f"No PNG or WebP files found in {args.input_dir}")
+        print(f"No image files found in {input_dir}")
         return
 
     print(f"Found {len(image_files)} image files")
@@ -115,17 +119,16 @@ def main():
     # Create the card sheets
     card_sheets = create_card_sheets(
         image_files,
-        args.max_rows,
-        args.max_columns,
-        args.card_width,
-        args.card_height,
-        args.sort
+        max_rows,
+        max_columns,
+        card_width,
+        card_height,
+        sort_files
     )
 
     # Get base filename and extension
-    base_name, extension = os.path.splitext(args.output_file)
-    if not extension:
-        extension = ".jpg"  # Default to jpg if no extension provided
+    base_name = os.path.join(output_dir, "card_sheet")
+    extension = ".jpg"
 
     # Save each card sheet with a sequential number
     for i, (sheet, rows, columns) in enumerate(card_sheets):
@@ -133,14 +136,17 @@ def main():
         if len(card_sheets) > 1:
             filename = f"{base_name}_{i + 1}{extension}"
         else:
-            filename = args.output_file
+            filename = f"{base_name}{extension}"
 
-        sheet.save(filename, 'JPEG', quality=args.quality)
+        sheet.save(filename, 'JPEG', quality=quality)
         print(f"Card sheet saved as {filename}")
         print(f"Dimensions: {sheet.width}x{sheet.height} pixels")
         print(f"Grid size: {rows}×{columns}")
 
     print(f"Created {len(card_sheets)} card sheets in total")
+
+    # Show completion message
+    tk.messagebox.showinfo("Conversion Complete", f"Created {len(card_sheets)} card sheets in {output_dir}")
 
 
 if __name__ == "__main__":
