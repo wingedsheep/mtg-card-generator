@@ -224,18 +224,19 @@ class BoosterGenerator(QThread):
 
         if not sample_path:
             # Create a default sized blank card
-            blank_card = Image.new('RGB', (500, 726), (240, 240, 240))
+            blank_card = Image.new('RGB', (1000, 1452), (240, 240, 240))
         else:
             # Create a blank card with the same dimensions as the sample
             sample_img = Image.open(sample_path)
-            blank_card = Image.new('RGB', sample_img.size, (240, 240, 240))
+            sample_width, sample_height = sample_img.size
+            blank_card = Image.new('RGB', (sample_width * 2, sample_height * 2), (240, 240, 240))
 
         # Add some minimal text
         try:
             draw = ImageDraw.Draw(blank_card)
             # Try to use a system font, fall back to default if not available
             try:
-                font = ImageFont.truetype("Arial", 20)
+                font = ImageFont.truetype("Arial", 40)
             except:
                 font = ImageFont.load_default()
 
@@ -257,10 +258,36 @@ class BoosterGenerator(QThread):
         if not images:
             return
 
-        # Choose grid size: up to 10×10 cards; keep it square‑ish
+        # Calculate the minimum number of cards needed
         n = len(images)
-        cols = min(10, max(4, math.ceil(math.sqrt(n))))
-        rows = math.ceil(n / cols)
+
+        # Set minimum rows to 2 as required
+        min_rows = 2
+
+        # Calculate grid size to be as square as possible
+        # Square means rows ≈ columns, so we target sqrt(n)
+        target_dimension = math.sqrt(n)
+
+        # But ensure we have at least 2 rows
+        rows = max(min_rows, math.ceil(target_dimension))
+
+        # Calculate columns needed based on rows to fit all cards
+        cols = math.ceil(n / rows)
+
+        # Adjust for maximum size (10x10)
+        if cols > 10:
+            cols = 10
+            rows = math.ceil(n / cols)
+
+        # Make more square if possible by balancing rows and columns
+        # Try to get closer to a square by increasing rows if it would reduce columns significantly
+        if cols > rows + 1 and rows < 10:
+            new_rows = rows + 1
+            new_cols = math.ceil(n / new_rows)
+            # If this makes it more square, use the new dimensions
+            if abs(new_rows - new_cols) < abs(rows - cols):
+                rows = new_rows
+                cols = new_cols
 
         # Create a blank card if needed
         if len(images) < rows * cols and not self.blank_card_path:
@@ -277,15 +304,15 @@ class BoosterGenerator(QThread):
             all_images,
             max_rows=rows,
             max_columns=cols,
-            card_width=500,
-            card_height=726,
+            card_width=1000,
+            card_height=1452,
             sort_files=False,
         )
 
         # Save the sheet
         sheet, *_ = sheets[0]
         output_path = out_dir / f"booster_{name}.jpg"
-        sheet.save(output_path, "JPEG", quality=90)
+        sheet.save(output_path, "JPEG", quality=80)
 
     def _cleanup(self):
         """Clean up temporary files."""

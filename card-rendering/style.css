@@ -504,11 +504,11 @@
   width: 53.8mm;
   height: 26mm;
   margin: auto;
-  padding: 1mm 1mm 1.5mm 1mm;
+  padding: 1.5mm 1mm 1.5mm 1mm;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .oracle > div {
   overflow-wrap: break-word;
