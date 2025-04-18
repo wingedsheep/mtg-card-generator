@@ -12,7 +12,7 @@ import os
 import glob
 import math
 import tkinter as tk
-from tkinter import filedialog, simpledialog
+from tkinter import filedialog
 from PIL import Image
 
 

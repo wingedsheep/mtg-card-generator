@@ -3,3 +3,4 @@ openai~=1.61.1
 pytest-playwright~=0.7.0
 pillow~=11.1.0
 playwright~=1.50.0
+PyQt6~=6.9.0

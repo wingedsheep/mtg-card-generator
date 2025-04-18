@@ -16,6 +16,7 @@ Generate complete Magic: The Gathering card sets using AI, including card mechan
 - **Card Rendering**: Renders cards in the official MTG card frame style
 - **Format Support**: Outputs cards in both JSON and PNG formats
 - **Tabletop Simulator Support**: Convert card images into properly formatted deck sheets for Tabletop Simulator
+- **Booster Draft Generator**: Create draft boosters with the correct card distribution for play in Tabletop Simulator
 
 ## Generated example Cards
 
@@ -203,32 +204,54 @@ The project includes a TTS Deck Converter tool (`tts_deck_converter.py`) that ar
 
 ```bash
 cd card-generator
-python tts_deck_converter.py --input-dir output/card_images --output-file tts_deck.jpg
+python tts_deck_converter.py
 ```
 
-#### Available Options
+This will open a folder selector dialog. You can choose a directory containing your card images. The converter will then create a `tts_deck` folder with the following structure:
 
 ```
---input-dir DIRECTORY    Directory containing the card images [default: ./cards]
---output-file FILENAME   Output JPG filename base [default: card_sheet.jpg]
---max-rows INT           Maximum number of rows in the grid [default: 7]
---max-columns INT        Maximum number of columns in the grid [default: 10]
---card-width WIDTH       Width of each card in pixels [default: 500]
---card-height HEIGHT     Height of each card in pixels [default: 726]
---quality QUALITY        JPG quality (1-100) [default: 90]
---sort                   Sort files alphabetically [default: False]
+tts_deck/
+├── deck_sheet_1.png
+├── deck_sheet_2.png
+├── deck_sheet_3.png
+└── ...
 ```
 
-### Importing Into Tabletop Simulator
+Each sheet will contain a grid of card images, ready for import into Tabletop Simulator.
 
-1. Launch Tabletop Simulator
-2. Create a new game or join an existing one
-3. Right-click on the table and select "Objects" > "Components" > "Custom" > "Deck"
-4. In the custom deck dialog:
-   - Set Face/Back URL to your generated card sheet (e.g., http://yourhost.com/tts_deck.jpg)
-   - Enter the number of Cards Horizontally (columns) and Cards Vertically (rows)
-   - Adjust other settings as needed
-5. Click "Import" to create your custom deck
+To import the deck sheets into Tabletop Simulator:
+
+1. Open Tabletop Simulator
+2. Create a new game
+3. Click on "Objects" in the top menu
+4. Select "Components" > "Cards" > "Custom Deck"
+5. Select the first deck sheet image for front images
+6. You can use `https://static.wikia.nocookie.net/mtgsalvation_gamepedia/images/f/f8/Magic_card_back.jpg/revision/latest` as the back image
+7. Set the number of cards per row and column based on your grid size
+8. Click "Import" to load the deck into your game
+9. Repeat for each deck sheet
+
+## Booster Draft Generator
+
+The project includes a Booster Draft Generator that creates randomized booster packs from your generated sets for drafting in Tabletop Simulator.
+
+### Using the Booster Generator
+
+1. Launch the booster generator:
+```bash
+cd card-generator
+python mtg-booster-generator.py
+```
+
+2. In the interface:
+   - Select your MTG set folder
+   - Set the number of boosters (1-100)
+   - Click "Generate Boosters"
+
+The generator creates:
+- 15-card boosters with the correct rarity distribution (1 rare/mythic, 3 uncommons, 11 commons)
+- Special boosters for each basic land type with all art variants
+- All output saved in a `boosters` folder ready for use in Tabletop Simulator (see above for import instructions)
 
 ## Card Rendering Details
 
