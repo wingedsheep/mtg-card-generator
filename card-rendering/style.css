@@ -509,6 +509,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  gap: 0.8mm;
 }
 .oracle > div {
   overflow-wrap: break-word;
