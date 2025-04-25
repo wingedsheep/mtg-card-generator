@@ -231,6 +231,10 @@ To import the deck sheets into Tabletop Simulator:
 8. Click "Import" to load the deck into your game
 9. Repeat for each deck sheet
 
+You can now play with your customer cards in tabletop simulator!
+
+![tts.png](tts.png)
+
 ## Booster Draft Generator
 
 The project includes a Booster Draft Generator that creates randomized booster packs from your generated sets for drafting in Tabletop Simulator.

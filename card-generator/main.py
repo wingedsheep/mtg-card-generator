@@ -271,7 +271,7 @@ async def main():
         batches_count=20,  # Number of batches to generate
 
         # Optional theme prompt (will be ignored if complete_theme_override is provided)
-        theme_prompt=None,
+        theme_prompt="Varied set with many of the creature types from MTG included, don't include anything with time or dimensions in the theme",
 
         # Uncomment the line below to use a complete theme override instead of generating one
         # complete_theme_override=complete_theme,
