@@ -67,19 +67,19 @@ Example prompt:
 
 ``` 
 Example 1:
-Oil on canvas painting. Magic the gathering art. Rough brushstrokes. A wild-eyed goblin wizard perches atop a 
+Oil on canvas painting. Rough brushstrokes. A wild-eyed goblin wizard perches atop a 
 rock formation in his cave laboratory. His unkempt red hair stands on end, burning at the tips with magical fire that 
 doesn't harm him. Red mana crackles like lightning around his hands, and his tattered robes smoke from magical 
 mishaps. Behind him, a contraption of copper pipes, glass tubes, and crystals spews chaotic flame. Burning spell 
 scrolls float around him as he grins with manic glee, his experiment spiraling out of control. The cave walls reflect 
 orange-red firelight, and burnt artifacts litter the ground. Small explosions pop like magical fireworks in the 
 background. Crisp details emphasize the chaotic energy and magical power, particularly in the interplay of fire and 
-magical effects. Wizard. Oil on canvas artwork.
+magical effects. Wizard. Oil on canvas with fine details.
 
-Example 2: Oil on canvas painting. Magic the gathering art. Rough brushstrokes. Ancient forest grove bathed in 
+Example 2: Oil on canvas painting. Rough brushstrokes. Ancient forest grove bathed in 
 emerald light. Massive moss-covered tree roots form archways over clear pools. Glowing white flowers spiral across 
-the forest floor. Ethereal mist and crystal formations weave between towering trunks. Oil on canvas with rough 
-brushstrokes, Magic: The Gathering style. Emphasis on natural patterns and dappled light through the canopy. Oil on 
+the forest floor. Ethereal mist and crystal formations weave between towering trunks. Oil on canvas with fine details. 
+Emphasis on natural patterns and dappled light through the canopy. Oil on 
 canvas artwork. 
 ``` 
 
