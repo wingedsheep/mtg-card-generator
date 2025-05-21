@@ -260,7 +260,7 @@ class MTGJSONConverter:
             remove the variation number in the output name, but keep the image path as is.
         17. For Saga cards, include an "authority" field with a value of None.
         18. For Saga cards, preserve the roman numerals (I, II, III, IV) in the oracle_text, followed by a proper em dash (—).
-        19. Mana icons are always between curly braces, e.g., {{2}}, {{R}}, {{G}}, etc.
+        19. Mana icons in the `mana_cost` field are always between curly braces (e.g., {{R}}, {{G}}, {{U}}, {{W}}, {{B}}).
         20. Put reminders of mechanics between parentheses in the oracle_text. You don't need to do this for very common mechanics like "Flying" or "Trample".
 
         Here are some examples:
