@@ -292,6 +292,8 @@ class MTGJSONConverter:
 
         Now convert this card data to the same format:
         {json.dumps(card_data, indent=2)}
+        
+        Make sure to follow all the rules above. It is important that mana icons are always between curly braces!
 
         Return only the JSON object with no additional text."""
 
