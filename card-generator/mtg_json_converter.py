@@ -1,60 +1,68 @@
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Any
+import time
 
 from models import Config, Card
+from language_model_strategies import LanguageModelStrategy
 
 
 class MTGJSONConverter:
-    def __init__(self, config: Config = None):
+    def __init__(self, config: Config, language_model_strategy: LanguageModelStrategy):
         self.config = config
-        self.client = config.openai_client if config else None
+        self.language_model = language_model_strategy
 
-    def convert_to_rendering_format(self, input_json: Dict, max_retries: int = 3) -> Dict:
-        """Convert input JSON to rendering format using OpenRouter with retries."""
-        # Extract card data
-        card_data = input_json["card"]
+    def convert_to_rendering_format(self, input_card_json_obj: Dict, max_retries: int = 3) -> Dict:
+        """Convert input card JSON object to rendering format using the LanguageModelStrategy."""
+        # input_card_json_obj is expected to be the dict under the "card" key from the file
+        # e.g., {"name": "Ancient Grovekeeper", ...}
 
-        # Create example prompt
-        prompt = self._create_conversion_prompt(card_data)
+        card_data_for_prompt = input_card_json_obj
+
+        prompt_text = self._create_conversion_prompt(card_data_for_prompt)
 
         for attempt in range(max_retries):
             try:
-                # Get conversion from OpenRouter
-                completion = self.client.chat.completions.create(
-                    extra_headers=self.config.api_headers,
-                    model=self.config.json_model,  # Use Gemini model from config
-                    messages=[
-                        {"role": "system",
-                         "content": "You are a JSON converter that converts MTG card data to rendering format. Return only the JSON object with no additional text."},
-                        {"role": "user", "content": prompt}
-                    ]
+                # Use the language_model strategy for JSON conversion
+                # The specific model (e.g., "render_format_conversion") is chosen by the strategy
+                converted_json = self.language_model.generate_json_response(
+                    prompt=prompt_text,
+                    system_prompt="You are a JSON converter that converts MTG card data to a specific rendering format. Return only the single JSON object with no additional text or explanations.",
+                    model_key="render_format_conversion" # Key from language_model settings
                 )
 
-                response_text = completion.choices[0].message.content
-                # Extract JSON from response
-                start_idx = response_text.find('{')
-                end_idx = response_text.rfind('}')
-                if start_idx != -1 and end_idx != -1:
-                    json_text = response_text[start_idx:end_idx + 1]
-                    converted_json = json.loads(json_text)
+                if not isinstance(converted_json, dict):
+                    print(f"Warning: Expected a dict from rendering format conversion, got {type(converted_json)}. Content: {converted_json}")
+                    # If it's a list with one dict, extract it
+                    if isinstance(converted_json, list) and len(converted_json) == 1 and isinstance(converted_json[0], dict):
+                        converted_json = converted_json[0]
+                    else: # Could not easily recover a dict
+                        raise ValueError("Converted JSON is not a dictionary as expected for rendering format.")
 
-                    # Add original_name field for basic lands with variation numbers
-                    if any(land_type in card_data["name"] for land_type in
-                           ["Plains", "Island", "Swamp", "Mountain", "Forest"]) and " " in card_data["name"]:
-                        converted_json["original_name"] = card_data["name"]
+                # Add original_name field for basic lands with variation numbers, if applicable
+                # This logic might be better placed in the prompt or handled by the LLM,
+                # but can be post-processed here for consistency.
+                original_name = card_data_for_prompt.get("name", "")
+                if any(land_type in original_name for land_type in
+                       ["Plains", "Island", "Swamp", "Mountain", "Forest"]) and " " in original_name:
+                    # Ensure the converted_json has the base name (e.g. "Plains")
+                    # and we add original_name if the renderer needs it.
+                    # The example output for "Plains 1" becomes "name": "Plains".
+                    # If the LLM correctly shortens the name, we might add original_name for reference.
+                    if converted_json.get("name") != original_name:
+                         converted_json["original_name"] = original_name
 
-                    return converted_json
-                raise ValueError("No valid JSON object found in response")
+                return converted_json # Should be a Dict
 
             except Exception as e:
-                if attempt == max_retries - 1:  # Last attempt
-                    print(f"Error converting JSON after {max_retries} attempts: {e}")
-                    print("Raw response:", response_text)
-                    raise
-                print(f"Attempt {attempt + 1} failed: {e}. Retrying...")
-                import time
-                time.sleep(2)  # Wait 2 seconds before retrying
+                print(f"Error converting JSON to rendering format (Attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt == max_retries - 1:
+                    # The strategy's generate_json_response should include raw text in its error if possible.
+                    raise Exception(f"Failed to convert to rendering format after {max_retries} attempts for card '{card_data_for_prompt.get('name', 'Unknown')}'.") from e
+                time.sleep(2) # Wait before retrying
+
+        # Should not be reached if max_retries > 0
+        raise Exception(f"Conversion failed for card '{card_data_for_prompt.get('name', 'Unknown')}' after all retries.")
 
     def _create_conversion_prompt(self, card_data: Dict) -> str:
         """Create the prompt for JSON conversion."""
@@ -298,11 +306,16 @@ class MTGJSONConverter:
         return prompt
 
     def convert_file(self, input_path: Path, max_retries: int = 3) -> Dict:
-        """Convert a single JSON file with retries."""
+        """Convert a single JSON file (expected to contain a 'card' object) with retries."""
         with open(input_path, 'r', encoding='utf-8') as f:
-            input_json = json.load(f)
+            data_from_file = json.load(f)
 
-        return self.convert_to_rendering_format(input_json, max_retries=max_retries)
+        # The files saved by MTGArtGenerator and MTGLandGenerator wrap the card data in a "card" key.
+        if "card" not in data_from_file or not isinstance(data_from_file["card"], dict):
+            raise ValueError(f"Input JSON file {input_path} does not contain a 'card' object at the top level.")
+
+        card_object_to_convert = data_from_file["card"]
+        return self.convert_to_rendering_format(card_object_to_convert, max_retries=max_retries)
 
     def convert_directory(self, input_dir: Path, output_dir: Path, max_retries: int = 3) -> None:
         """Convert all JSON files in a directory with retries, excluding mtg_set_output.json."""

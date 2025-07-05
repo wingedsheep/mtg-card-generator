@@ -1,17 +1,101 @@
 {
-  "openrouter": {
-    "apiKey": "your-openrouter-api-key"
+  "api_keys": {
+    "openrouter": "YOUR_OPENROUTER_API_KEY_HERE",
+    "replicate": "YOUR_REPLICATE_API_KEY_HERE"
   },
-  "replicate": {
-    "apiKey": "your-replicate-api-key"
+  "api_headers": {
+    "HTTP-Referer": "https://example.com/mtg-card-generator",
+    "X-Title": "MTG Card Generator"
   },
-  "models": {
-    "main": "google/gemini-2.5-pro-preview",
-    "json": "google/gemini-2.5-flash-preview",
-    "image_model": "imagen",
+  "output_directory_base": "output_sets",
+
+  "image_generation": {
+    "strategy": "replicate",
+    "default_output_dir_name": "card_images",
+
     "replicate": {
-      "flux": "black-forest-labs/flux-1.1-pro",
-      "imagen": "google/imagen-4"
+      "selected_model_type": "flux",
+      "models": {
+        "flux": {
+          "id": "black-forest-labs/FLUX.1-schnell",
+          "params": {
+            "aspect_ratio_standard": "5:4",
+            "aspect_ratio_saga": "9:16",
+            "safety_tolerance": 6,
+            "prompt_upsampling": true
+          }
+        },
+        "imagen": {
+          "id": "ai-forever/kandinsky-2.2",
+          "params": {
+            "aspect_ratio_standard": "4:3",
+            "aspect_ratio_saga": "9:16",
+            "safety_filter_level": "block_only_high"
+          }
+        }
+      },
+      "cropping": {
+        "crop_to_5x4_standard": true,
+        "crop_to_4x5_saga": true
+      }
+    },
+    "diffusers": {
+      "model_id": "runwayml/stable-diffusion-v1-5",
+      "device": "cuda",
+      "params": {
+        "num_inference_steps": 50,
+        "guidance_scale": 7.5
+      },
+      "dimensions": {
+        "standard_width": 512,
+        "standard_height": 512,
+        "saga_width": 512,
+        "saga_height": 768
+      }
+    }
+  },
+
+  "language_model": {
+    "strategy": "openrouter",
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "models": {
+        "default_main": "openai/gpt-4o",
+        "default_json": "openai/gpt-4o-mini",
+        "art_prompt_generation": "openai/gpt-4o",
+        "theme_generation": "openai/gpt-4o",
+        "card_batch_generation": "openai/gpt-4o",
+        "json_conversion_from_text": "openai/gpt-4o-mini",
+        "render_format_conversion": "openai/gpt-4o-mini"
+      },
+      "params": {
+        "temperature": 0.7,
+        "max_tokens": 2048
+      },
+      "json_params": {
+        "temperature": 0.2,
+        "max_tokens": 3000
+      }
+    },
+    "ollama": {
+      "host": null,
+      "models": {
+        "default_main": "llama3:latest",
+        "default_json": "mistral:instruct",
+        "art_prompt_generation": "llama3:instruct",
+        "theme_generation": "llama3:latest",
+        "card_batch_generation": "llama3:latest",
+        "json_conversion_from_text": "mistral:instruct",
+        "render_format_conversion": "mistral:instruct"
+      },
+      "params": {
+        "temperature": 0.8
+      },
+      "json_params": {
+         "temperature": 0.3,
+         "format": "json"
+      },
+      "stream": false
     }
   }
 }

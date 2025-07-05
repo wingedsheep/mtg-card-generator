@@ -55,10 +55,13 @@ class TestHuggingFaceDiffusersTool(unittest.TestCase):
 
     @patch('tools.huggingface_diffusers_tool.torch.cuda.is_available', return_value=False)
     @patch('tools.huggingface_diffusers_tool.StableDiffusionPipeline.from_pretrained')
-    @patch('os.makedirs')
-    @patch('PIL.Image.Image') # Mock the Image class from PIL
-    def test_generate_image(self, MockPILImage, mock_makedirs, mock_from_pretrained, mock_cuda_available):
+    @patch('tools.huggingface_diffusers_tool.os.path.exists') # Mock os.path.exists
+    @patch('tools.huggingface_diffusers_tool.os.makedirs')
+    @patch('tools.huggingface_diffusers_tool.Image.Image')
+    def test_generate_image(self, MockPILImage, mock_os_makedirs, mock_os_path_exists, mock_from_pretrained, mock_cuda_available):
         """Test image generation functionality."""
+        mock_os_path_exists.return_value = False # Ensure makedirs is called
+
         # Setup mock pipeline and image
         mock_pipe_instance = MagicMock()
         mock_generated_image = MockPILImage() # Instance of the mocked Image class
@@ -78,7 +81,8 @@ class TestHuggingFaceDiffusersTool(unittest.TestCase):
         actual_path = tool.generate_image(prompt, output_dir, image_name)
 
         # Assertions
-        mock_makedirs.assert_called_once_with(output_dir)
+        mock_os_path_exists.assert_called_once_with(output_dir)
+        mock_os_makedirs.assert_called_once_with(output_dir) # Corrected variable name
         tool.pipe.assert_called_once_with(
             prompt,
             num_inference_steps=50,

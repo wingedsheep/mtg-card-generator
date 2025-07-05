@@ -1,0 +1,17 @@
+{
+  "openrouter": {
+    "apiKey": "your-openrouter-api-key"
+  },
+  "replicate": {
+    "apiKey": "your-replicate-api-key"
+  },
+  "models": {
+    "main": "google/gemini-2.5-pro-preview",
+    "json": "google/gemini-2.5-flash-preview",
+    "image_model": "imagen",
+    "replicate": {
+      "flux": "black-forest-labs/flux-1.1-pro",
+      "imagen": "google/imagen-4"
+    }
+  }
+}

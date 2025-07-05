@@ -5,25 +5,32 @@ from typing import Dict, List
 from collections import Counter
 
 from models import Config, Card
-from mtg_set_generator import MTGSetGenerator
-from mtg_art_generator import MTGArtGenerator
-from mtg_json_converter import MTGJSONConverter
-from mtg_card_renderer import MTGCardRenderer
-from mtg_land_generator import MTGLandGenerator
+# Strategies will be created via Config object
+# from mtg_set_generator import MTGSetGenerator # Will be initialized with strategies
+# from mtg_art_generator import MTGArtGenerator
+# from mtg_json_converter import MTGJSONConverter
+from mtg_card_renderer import MTGCardRenderer # Assuming this doesn't need LM/Image strategies for now
+from mtg_land_generator import MTGLandGenerator # Assuming this primarily uses MTGArtGenerator
 
 
 class MTGGeneratorOrchestrator:
     def __init__(self, config: Config):
-        self.config = config
+        self.config = config # Config object now handles strategy creation
 
-        # Initialize the clients from the config
-        self.config.initialize_clients()
+        # Create strategies via the Config object
+        self.language_model_strategy = self.config.create_language_model_strategy()
+        self.image_generator_strategy = self.config.create_image_generator_strategy()
 
-        # Initialize components with unified config
-        self.set_generator = MTGSetGenerator(config)
-        self.json_converter = MTGJSONConverter(config)
-        self.card_renderer = MTGCardRenderer(config)
-        # Art generator will be initialized after we have the theme
+        # Initialize components, passing the strategies to them
+        # Need to import the classes here or ensure they are available
+        from mtg_set_generator import MTGSetGenerator
+        from mtg_json_converter import MTGJSONConverter
+
+        self.set_generator = MTGSetGenerator(config, self.language_model_strategy)
+        self.json_converter = MTGJSONConverter(config, self.language_model_strategy)
+        self.card_renderer = MTGCardRenderer(config) # Renderer might not directly use these strategies
+
+        # Art generator will be initialized after we have the theme, and will need both strategies
         self.art_generator = None
 
         # Track the collector number counter to pass to land generator
@@ -34,15 +41,22 @@ class MTGGeneratorOrchestrator:
         Process each batch completely (cards, art, rendering) before moving to the next batch."""
         print("\n=== Starting MTG Set Generation ===")
 
-        # Initialize the set (load inspiration cards and generate theme)
+        from mtg_art_generator import MTGArtGenerator # Import here for late initialization
+
+        # Initialize the set (load inspiration cards and generate theme using LM strategy)
         print("\n--- Initializing Set ---")
-        self.set_generator.initialize_set()
+        self.set_generator.initialize_set() # This now uses the LM strategy for theme
 
         # Get the theme for art generation
         theme = self.set_generator.set_theme
 
-        # Initialize art generator with theme
-        self.art_generator = MTGArtGenerator(self.config, theme)
+        # Initialize art generator with theme and strategies
+        self.art_generator = MTGArtGenerator(
+            self.config,
+            theme,
+            self.language_model_strategy, # For art prompts
+            self.image_generator_strategy  # For image generation
+        )
 
         # Process each batch completely
         all_processed_cards = []
@@ -295,14 +309,30 @@ async def main():
             "G": 0.2  # Green
         },
 
-        # Image generation model (options: "flux" or "imagen")
-        image_model="imagen"
+        # Image generation model and language model choices are now primarily in settings.json
+        # The `image_model` field in Config is removed; strategy is chosen from settings.
+        # `main_model` and `json_model` in Config are also removed.
     )
 
     # Create and run orchestrator
+    # The Config object will load settings from "card-generator/settings.json" (or example)
+    # and will be used to create the appropriate strategies.
     orchestrator = MTGGeneratorOrchestrator(config)
     await orchestrator.generate_complete_set()
 
 
 if __name__ == "__main__":
+    # Ensure settings.json exists or copy from settings.example.json
+    # This is a good place for a small check or instruction to the user.
+    import pathlib
+    settings_file = pathlib.Path("card-generator/settings.json")
+    example_settings_file = pathlib.Path("card-generator/settings.example.json")
+    if not settings_file.exists() and example_settings_file.exists():
+        print(f"'{settings_file}' not found. Please copy '{example_settings_file}' to '{settings_file}' "
+              "and configure your API keys and model preferences.")
+        # For automated environments or first run, you might choose to auto-copy:
+        # import shutil
+        # shutil.copy(example_settings_file, settings_file)
+        # print(f"Copied example settings to '{settings_file}'. Please review and configure.")
+
     asyncio.run(main())
