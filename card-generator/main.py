@@ -279,39 +279,15 @@ async def main():
     """
 
     # Set configuration
+    # Most operational settings are now loaded from settings.json by the Config class.
+    # csv_file_path is kept here as it's a fundamental path.
+    # Theme overrides can also be passed directly if needed for a specific run.
     config = Config(
-        csv_file_path="./assets/mtg_cards_english.csv",
-        inspiration_cards_count=50,  # Number of cards to use as inspiration
-        batches_count=20,  # Number of batches to generate
-
-        # Optional theme prompt (will be ignored if complete_theme_override is provided)
-        theme_prompt="Varied set with many of the creature types from MTG included, don't include anything with time or dimensions in the theme",
-
-        # Uncomment the line below to use a complete theme override instead of generating one
-        # complete_theme_override=complete_theme,
-
-        # Basic land generation
-        generate_basic_lands=True,
-        land_variations_per_type=3,
-
-        # Rarity distribution per batch
-        mythics_per_batch=1,
-        rares_per_batch=3,
-        uncommons_per_batch=4,
-        commons_per_batch=5,
-
-        # Color balance target (percentage)
-        color_distribution={
-            "W": 0.2,  # White
-            "U": 0.2,  # Blue
-            "B": 0.2,  # Black
-            "R": 0.2,  # Red
-            "G": 0.2  # Green
-        },
-
-        # Image generation model and language model choices are now primarily in settings.json
-        # The `image_model` field in Config is removed; strategy is chosen from settings.
-        # `main_model` and `json_model` in Config are also removed.
+        csv_file_path="./assets/mtg_cards_english.csv"
+        # Example of overriding a theme prompt for a specific run,
+        # otherwise it will use the value from settings.json or the Config default.
+        # theme_prompt="A specific theme for this run only: Clockwork Dragons",
+        # complete_theme_override=complete_theme, # Or provide a full theme object
     )
 
     # Create and run orchestrator

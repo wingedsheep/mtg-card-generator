@@ -17,14 +17,13 @@ from language_model_strategies import LanguageModelStrategy
 class Config:
     """Configuration for MTG card generation, loading from settings.json."""
 
-    # Operational parameters (can be overridden at runtime or have defaults here)
-    csv_file_path: str = "./assets/mtg_cards_english.csv"
-    inspiration_cards_count: int = 100
+    # Operational parameters - defaults are set here, can be overridden by settings.json
+    csv_file_path: str = "./assets/mtg_cards_english.csv" # Remains a constructor arg primarily
+    inspiration_cards_count: int = 50
     batches_count: int = 20
-    theme_prompt: Optional[str] = None
+    theme_prompt: Optional[str] = "Varied set with many of the creature types from MTG included, don't include anything with time or dimensions in the theme"
     complete_theme_override: Optional[str] = None
 
-    # Rarity and color distribution (could also move to settings.json if desired for full external config)
     mythics_per_batch: int = 1
     rares_per_batch: int = 3
     uncommons_per_batch: int = 4
@@ -33,11 +32,10 @@ class Config:
         "W": 0.2, "U": 0.2, "B": 0.2, "R": 0.2, "G": 0.2
     })
 
-    # Land generation options
     generate_basic_lands: bool = True
     land_variations_per_type: int = 3
 
-    # Internal state, not directly from settings.json for these
+    # Internal state
     set_id: str = field(init=False)
     output_dir: Path = field(init=False)
 
@@ -46,14 +44,15 @@ class Config:
 
     def __post_init__(self):
         self.set_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self._load_settings() # Load all settings from settings.json
+        self._load_settings_from_json() # Renamed for clarity
+        self._apply_operational_settings() # Apply operational settings from JSON over defaults
 
         base_output_dir = Path(self.settings_data.get('output_directory_base', 'output_sets'))
         self.output_dir = base_output_dir / self.set_id
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _load_settings(self, settings_path: str = "card-generator/settings.json"):
-        """Load all settings from the primary JSON configuration file."""
+    def _load_settings_from_json(self, settings_path: str = "card-generator/settings.json"):
+        """Load all settings from the primary JSON configuration file into self.settings_data."""
         try:
             # Attempt to load user's settings.json first
             with open(settings_path, 'r') as f:
@@ -76,6 +75,29 @@ class Config:
                   "Application may not function correctly.")
             self.settings_data = {} # Ensure it's a dict
 
+    def _apply_operational_settings(self):
+        """Overrides default operational parameters with values from settings_data if present."""
+        op_settings = self.settings_data.get("operational_settings", {})
+
+        self.inspiration_cards_count = op_settings.get("inspiration_cards_count", self.inspiration_cards_count)
+        self.batches_count = op_settings.get("batches_count", self.batches_count)
+        self.theme_prompt = op_settings.get("theme_prompt", self.theme_prompt)
+        self.complete_theme_override = op_settings.get("complete_theme_override", self.complete_theme_override)
+        self.generate_basic_lands = op_settings.get("generate_basic_lands", self.generate_basic_lands)
+        self.land_variations_per_type = op_settings.get("land_variations_per_type", self.land_variations_per_type)
+
+        rarities_per_batch_settings = op_settings.get("rarities_per_batch", {})
+        self.mythics_per_batch = rarities_per_batch_settings.get("mythic", self.mythics_per_batch)
+        self.rares_per_batch = rarities_per_batch_settings.get("rare", self.rares_per_batch)
+        self.uncommons_per_batch = rarities_per_batch_settings.get("uncommon", self.uncommons_per_batch)
+        self.commons_per_batch = rarities_per_batch_settings.get("common", self.commons_per_batch)
+
+        self.color_distribution = op_settings.get("color_distribution_targets", self.color_distribution)
+
+        # csv_file_path is intentionally not loaded from JSON here, as it's passed to __init__
+        # and more tied to the execution environment / project structure.
+        # However, one could add it to JSON if desired, with a default in __init__.
+        print("Applied operational settings from JSON (if any).")
 
     def get_api_key(self, service_name: str) -> Optional[str]:
         """Get API key for a given service from loaded settings."""

@@ -133,78 +133,97 @@ cd card-rendering
 
 ## Configuration
 
-You can modify the generation parameters in `card-generator/main.py` or by editing `card-generator/settings.json` for some model choices.
+Configuration is primarily managed through `card-generator/settings.json`. You should copy `card-generator/settings.example.json` to `card-generator/settings.json` and customize it.
 
-**Primary Configuration (`card-generator/main.py`):**
+The `settings.json` file allows you to:
+-   Set API keys for OpenRouter and Replicate.
+-   Define global API headers.
+-   Choose strategies for image generation (e.g., "replicate", "diffusers") and language models (e.g., "openrouter", "ollama").
+-   Configure specific parameters for each strategy and model, such as model IDs, API endpoints, device preferences (cuda/cpu), image dimensions, and language model parameters (temperature, max tokens).
+-   Set operational parameters for card set generation, including:
+    -   `inspiration_cards_count`
+    -   `batches_count`
+    -   `theme_prompt` (for AI-generated themes)
+    -   `complete_theme_override` (to provide your own full theme text)
+    -   `generate_basic_lands` and `land_variations_per_type`
+    -   Rarity distribution per batch (`rarities_per_batch`)
+    -   Target color distribution (`color_distribution_targets`)
 
-```python
-config = Config(
-    inspiration_cards_count=50,  # Number of cards to use as inspiration
-    batches_count=1,            # Number of batches to generate
-    
-    # Theme options (choose one):
-    theme_prompt="Warhammer Fantasy",  # Provides a hint for theme generation
-    # OR
-    complete_theme_override="Your complete custom theme text here...",  # Use this for a fully custom theme
-    
-    # Rarity distribution
-    mythics_per_batch=1,        # Mythic rares per batch
-    rares_per_batch=1,          # Rares per batch
-    uncommons_per_batch=1,      # Uncommons per batch
-    commons_per_batch=1,        # Commons per batch
-    
-    # Color distribution
-    color_distribution={        # Target color distribution
-        "W": 0.2,  # White
-        "U": 0.2,  # Blue
-        "B": 0.2,  # Black
-        "R": 0.2,  # Red
-        "G": 0.2   # Green
-    },
-
-    # Image generation model (options: "replicate", "flux", "imagen", "diffusers")
-    # "replicate" is the original default. "flux" and "imagen" are specific Replicate models.
-    # "diffusers" will use the HuggingFaceDiffusersTool.
-    # Ensure your settings.json is configured if using "replicate", "flux", or "imagen".
-    # For "diffusers", ensure your local environment is set up.
-    image_model="replicate", # Default, or "flux", "imagen"
-
-    # Language model for card text generation (main_model) and JSON conversion (json_model)
-    # These usually point to models available via OpenRouter.
-    # To use Ollama, you would need to modify the MTGSetGenerator and MTGJSONConverter
-    # to use the OllamaTool, specifying a local model name.
-    # This requires code changes beyond simple configuration.
-    main_model="openai/gpt-4o", # Example OpenRouter model
-    json_model="openai/gpt-4o-mini"  # Example OpenRouter model
-)
-```
-
-**API and Local Model Settings (`card-generator/settings.json`):**
-
-The `settings.json` file is used for API keys and can be extended for local model configurations if needed (though current tools are mostly configured in `main.py` or directly in their respective classes).
+**Example `settings.json` Structure:**
 
 ```json
 {
-  "openrouter": {
-    "apiKey": "your_openrouter_api_key"
+  "api_keys": {
+    "openrouter": "YOUR_OPENROUTER_KEY",
+    "replicate": "YOUR_REPLICATE_KEY"
   },
-  "replicate": {
-    "apiKey": "your_replicate_api_key",
-    "flux_model": "black-forest-labs/FLUX.1-schnell", // Optional: specific model for "flux"
-    "imagen_model": "ai-forever/kandinsky-2.2"     // Optional: specific model for "imagen"
+  "api_headers": { /* ... */ },
+  "output_directory_base": "output_sets",
+
+  "image_generation": {
+    "strategy": "replicate", // "replicate" or "diffusers"
+    "default_output_dir_name": "card_images",
+    "replicate": {
+      "selected_model_type": "flux", // "flux" or "imagen"
+      "models": {
+        "flux": { "id": "black-forest-labs/FLUX.1-schnell", "params": { /* ... */ } },
+        "imagen": { "id": "ai-forever/kandinsky-2.2", "params": { /* ... */ } }
+      },
+      "cropping": { /* ... */ }
+    },
+    "diffusers": {
+      "model_id": "runwayml/stable-diffusion-v1-5",
+      "device": "cuda",
+      "params": { /* e.g., num_inference_steps */ },
+      "dimensions": { /* standard_width, saga_height etc. */ }
+    }
   },
-  "huggingface_diffusers": {
-    "model_id": "runwayml/stable-diffusion-v1-5", // Default model for HuggingFaceDiffusersTool
-    "device": "cuda" // "cuda" or "cpu"
+
+  "language_model": {
+    "strategy": "openrouter", // "openrouter" or "ollama"
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "models": { // Role-based model selection
+        "default_main": "openai/gpt-4o",
+        "default_json": "openai/gpt-4o-mini",
+        "art_prompt_generation": "openai/gpt-4o",
+        /* ... other roles ... */
+      },
+      "params": { /* Default OpenRouter params */ }
+    },
+    "ollama": {
+      "host": null, // Defaults to local Ollama
+      "models": { /* Role-based model selection for Ollama */ },
+      "params": { /* Default Ollama params */ }
+    }
   },
-  "ollama": {
-    "host": null // e.g., "http://localhost:11434", null uses default
+
+  "operational_settings": {
+    "inspiration_cards_count": 50,
+    "batches_count": 20,
+    "theme_prompt": "Epic fantasy with dragons and ancient magic",
+    "complete_theme_override": null, // Or your full theme string
+    "generate_basic_lands": true,
+    "land_variations_per_type": 3,
+    "rarities_per_batch": { "mythic": 1, "rare": 3, "uncommon": 4, "common": 5 },
+    "color_distribution_targets": { "W": 0.2, "U": 0.2, "B": 0.2, "R": 0.2, "G": 0.2 }
   }
 }
 ```
-*Note: The `image_model` setting in `main.py`'s `Config` object will determine which image generation path is taken. If set to `"diffusers"`, it will attempt to use the `HuggingFaceDiffusersTool`. The specific model ID for diffusers can be set in `settings.json` or passed during `HuggingFaceDiffusersTool` instantiation.*
 
-*For Ollama, the `OllamaTool` can be used programmatically. Integrating it into the main card generation flow to replace OpenRouter would require modifications to `MTGSetGenerator` and other components to call `OllamaTool.generate_text()` with appropriate local model names.*
+**Overriding Settings via Code (Optional):**
+
+While most settings are in `settings.json`, you can still override some operational parameters like `theme_prompt` or `complete_theme_override` directly when instantiating the `Config` object in `card-generator/main.py` if needed for a specific run:
+
+```python
+# In card-generator/main.py
+config = Config(
+    csv_file_path="./assets/mtg_cards_english.csv", # Essential path
+    # theme_prompt="A very specific theme for this run only",
+    # complete_theme_override="""... full theme text ..."""
+)
+```
+The system uses a strategy pattern internally to switch between different AI model providers (Replicate/Diffusers for images, OpenRouter/Ollama for language). The `strategy` fields in `settings.json` control which provider is used.
 
 
 ### Custom Theme Structure
