@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, List
 from typing import Any
 
 class LanguageModelStrategy(ABC):
-    @abstractmethod
+    # __init__ should not be an abstractmethod if it has a concrete implementation
     def __init__(self, global_config: Any, strategy_specific_config: Dict):
         """
         Initializes the language model strategy.
