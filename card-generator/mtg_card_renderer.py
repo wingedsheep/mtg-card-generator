@@ -82,9 +82,9 @@ class MTGCardRenderer:
                     # Retrieve the .mtg-card element
                     card_element = await page.query_selector('.mtg-card')
                     if card_element:
-                        # Create images directory if it doesn't exist
-                        images_dir = self.config.output_dir / "card_images"
-                        images_dir.mkdir(exist_ok=True)
+                        # Create SEPARATE rendered_cards directory (KEY CHANGE)
+                        rendered_cards_dir = self.config.output_dir / "rendered_cards"
+                        rendered_cards_dir.mkdir(exist_ok=True)
 
                         # Define output image path - Use original_name if it exists, otherwise use name
                         # This ensures basic land variations get unique filenames
@@ -93,7 +93,8 @@ class MTGCardRenderer:
                         else:
                             output_filename = card_data["name"].replace(' ', '_')
 
-                        output_path = images_dir / f"{output_filename}.png"
+                        # Save to rendered_cards directory instead of card_images
+                        output_path = rendered_cards_dir / f"{output_filename}.png"
 
                         # Get the original bounding box of the element
                         box = await card_element.bounding_box()
@@ -139,7 +140,7 @@ if __name__ == "__main__":
         "layout": "normal",
         "collector_number": "5",
         "image_uris": {
-            "art_crop": "../card-generator/output/20250213_213401/Calaveth,_Shifting_Pariah.png"
+            "art_crop": "../card-generator/output/20250213_213401/card_images/Calaveth,_Shifting_Pariah.png"
         },
         "mana_cost": "{1}{U}{R}",
         "type_line": "Legendary Creature - Human Shapeshifter",

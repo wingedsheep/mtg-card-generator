@@ -106,7 +106,7 @@
   },
 
   "operational_settings": {
-    "inspiration_cards_count": 50,
+    "inspiration_cards_count": 100,
     "batches_count": 20,
     "theme_prompt": "Varied set with unique lore and factions, many creature types included. The names should be realistic and based on the lore and linguistic history.",
     "complete_theme_override": null,
