@@ -44,14 +44,14 @@ class Config:
 
     def __post_init__(self):
         self.set_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self._load_settings_from_json() # Renamed for clarity
-        self._apply_operational_settings() # Apply operational settings from JSON over defaults
+        self._load_settings_from_json()
+        self._apply_operational_settings()
 
         base_output_dir = Path(self.settings_data.get('output_directory_base', 'output_sets'))
         self.output_dir = base_output_dir / self.set_id
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _load_settings_from_json(self, settings_path: str = "card-generator/settings.json"):
+    def _load_settings_from_json(self, settings_path: str = "./settings.json"):
         """Load all settings from the primary JSON configuration file into self.settings_data."""
         try:
             # Attempt to load user's settings.json first
@@ -130,9 +130,15 @@ class Config:
 
         if strategy_name == "replicate":
             # API key is implicitly handled by ReplicateImageGenerator using get_api_key
-            return ReplicateImageGenerator(global_config=self, strategy_specific_config=strategy_specific_conf)
+            return ReplicateImageGenerator(
+                global_config=self,
+                strategy_specific_config=strategy_specific_conf
+            )
         elif strategy_name == "diffusers":
-            return HuggingFaceDiffusersImageGenerator(global_config=self, strategy_specific_config=strategy_specific_conf)
+            return HuggingFaceDiffusersImageGenerator(
+                global_config=self,
+                strategy_specific_config=strategy_specific_conf
+            )
         else:
             raise ValueError(f"Unsupported image generation strategy: {strategy_name}")
 

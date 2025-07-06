@@ -1,18 +1,25 @@
 import json
 from pathlib import Path
-import replicate
 from typing import List, Dict
 from models import Card, Config
+from language_model_strategies import LanguageModelStrategy
+from image_generation_strategies import ImageGeneratorStrategy
 import requests
 from PIL import Image
 import io
 
 
 class MTGLandGenerator:
-    def __init__(self, config: Config, theme: str, start_collector_number: int = None):
+    def __init__(self, config: Config, theme: str, start_collector_number: int = None,
+                 language_model_strategy: LanguageModelStrategy = None,
+                 image_generator_strategy: ImageGeneratorStrategy = None):
         self.config = config
         self.theme = theme
-        self.client = config.openai_client
+
+        # Use provided strategies or create new ones from config
+        self.language_model = language_model_strategy or config.create_language_model_strategy()
+        self.image_generator = image_generator_strategy or config.create_image_generator_strategy()
+
         self.land_types = ["Plains", "Island", "Swamp", "Mountain", "Forest"]
         self.land_colors = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G"}
         # Use the passed collector number if provided, otherwise default to 500
@@ -47,13 +54,12 @@ Example 2 (Island): "Oil on canvas painting. Magic the gathering art. Detailed l
 
 Return only the art prompt text with no additional explanation."""
 
-        completion = self.client.chat.completions.create(
-            extra_headers=self.config.api_headers,
-            model=self.config.main_model,
-            messages=[{"role": "user", "content": prompt}]
+        # Use the language model strategy to generate the art prompt
+        return self.language_model.generate_text(
+            prompt=prompt,
+            system_prompt="You are an expert MTG art prompt generator.",
+            model_key="art_prompt_generation"  # Key from language_model settings
         )
-
-        return completion.choices[0].message.content
 
     def generate_land_card(self, land_type: str, variation: int) -> Card:
         """Create a Card object for a basic land."""
@@ -77,97 +83,25 @@ Return only the art prompt text with no additional explanation."""
         self.collector_number_counter += 1
         return card
 
-    def _get_model_params(self, prompt: str) -> dict:
-        """Get model-specific parameters based on the selected image model."""
-        active_model_name = self.config.image_model
-
-        if active_model_name == "flux":
-            return {
-                "prompt": prompt,
-                "aspect_ratio": "5:4",
-                "safety_tolerance": 6,
-                "prompt_upsampling": True
-            }
-        elif active_model_name == "imagen":
-            return {
-                "prompt": prompt,
-                "aspect_ratio": "4:3",  # Using 4:3 for Imagen
-                "safety_filter_level": "block_only_high"
-            }
-        else:
-            # Default to Flux parameters
-            return {
-                "prompt": prompt,
-                "aspect_ratio": "5:4",
-                "safety_tolerance": 6,
-                "prompt_upsampling": True
-            }
-
-    def generate_land_art(self, card: Card, art_prompt: str) -> bytes:
-        """Generate art for a land card using Replicate and crop if necessary."""
+    def generate_land_art(self, card: Card, art_prompt: str) -> str:
+        """Generate art for a land card using the image generator strategy."""
         try:
-            # Get the active Replicate model
-            active_model = self.config.get_active_replicate_model()
-            print(f"Using image model: {active_model} for {card.name}")
+            print(f"Generating art for {card.name} using image strategy...")
 
-            # Configure model-specific parameters
-            model_params = self._get_model_params(art_prompt)
-
-            # Generate image using the prompt with selected Replicate model
-            image_response = replicate.run(
-                active_model,
-                input=model_params
+            # Use the image generator strategy to create the art
+            image_name = f"{card.name.replace(' ', '_')}.png"
+            saved_image_path = self.image_generator.generate_image(
+                art_prompt=art_prompt,
+                card=card,
+                output_dir=self.config.output_dir,
+                image_name=image_name
             )
 
-            # If using Imagen (4:3 aspect ratio), we need to crop to 5:4
-            if self.config.image_model == "imagen":
-                # Download the image
-                image_url = image_response
-                response = requests.get(image_url)
-
-                if response.status_code == 200:
-                    # Open the image
-                    img = Image.open(io.BytesIO(response.content))
-
-                    # Calculate dimensions for cropping to 5:4 aspect ratio
-                    width, height = img.size
-                    target_width = height * 5 // 4
-
-                    # Ensure the target width doesn't exceed the original width
-                    if target_width > width:
-                        # If the width is insufficient, adjust the height instead
-                        target_height = width * 4 // 5
-                        # Crop from the center
-                        top = (height - target_height) // 2
-                        bottom = top + target_height
-                        left = 0
-                        right = width
-                    else:
-                        # Crop from the center
-                        left = (width - target_width) // 2
-                        right = left + target_width
-                        top = 0
-                        bottom = height
-
-                    # Crop the image
-                    cropped_img = img.crop((left, top, right, bottom))
-
-                    # Convert back to bytes
-                    img_byte_arr = io.BytesIO()
-                    cropped_img.save(img_byte_arr, format=img.format or 'PNG')
-                    img_byte_arr.seek(0)
-
-                    return img_byte_arr
-                else:
-                    print(f"Failed to download image: {response.status_code}")
-                    return b""
-
-            # For other models or if cropping failed, return the original response
-            return image_response
+            return saved_image_path
 
         except Exception as e:
-            print(f"Failed to generate land art: {str(e)}")
-            return b""
+            print(f"Failed to generate land art for {card.name}: {str(e)}")
+            return ""
 
     def save_land_card(self, card: Card) -> Path:
         """Save land card data to a JSON file and return the path."""
@@ -202,24 +136,13 @@ Return only the art prompt text with no additional explanation."""
                 print(f"  Generated art prompt for {land_card.name}")
 
                 # Generate and save art
-                image_data = self.generate_land_art(land_card, art_prompt)
+                image_path = self.generate_land_art(land_card, art_prompt)
 
-                # Save image if generation was successful
-                if image_data:
-                    image_path = self.config.get_output_path(f"{land_card.name.replace(' ', '_')}.png")
-                    if isinstance(image_data, io.BytesIO):
-                        # If it's already a BytesIO object
-                        with open(image_path, "wb") as f:
-                            f.write(image_data.getvalue())
-                    else:
-                        # If it's a URL or other type returned by replicate
-                        response = requests.get(image_data)
-                        if response.status_code == 200:
-                            with open(image_path, "wb") as f:
-                                f.write(response.content)
-
-                    land_card.image_path = str(image_path)
+                if image_path:
+                    land_card.image_path = image_path
                     print(f"  Saved image to {image_path}")
+                else:
+                    print(f"  Warning: Failed to generate image for {land_card.name}")
 
                 # Save land card data
                 self.save_land_card(land_card)

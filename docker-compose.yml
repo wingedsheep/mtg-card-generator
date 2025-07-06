@@ -1,0 +1,56 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mtg-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      # Option 1: Use a host directory (default - recommended for large models)
+      - ./ollama-data:/root/.ollama
+
+      # Option 2: Use named volume (comment above and uncomment below if preferred)
+      # - ollama_data:/root/.ollama
+
+      # Option 3: Use absolute host path (replace with your preferred location)
+      # - /var/lib/ollama:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      # Set max model size (optional, in bytes - default is unlimited)
+      # - OLLAMA_MAX_LOADED_MODELS=1
+    restart: unless-stopped
+    # Uncomment the following lines if you have an NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Optional: Ollama Web UI for easier model management
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: mtg-ollama-webui
+    ports:
+      - "8080:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=your-secret-key-here
+    volumes:
+      - ollama_webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  # Named volume - Docker manages location but may have size limits
+  ollama_data:
+    driver: local
+    # Optional: specify driver options for size limits
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /path/to/large/storage/ollama-data
+
+  ollama_webui_data:
+    driver: local

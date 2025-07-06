@@ -44,9 +44,8 @@ class MTGSetGenerator:
 
         self.set_theme = self.language_model.generate_text(
             prompt=prompt_content,
-            system_prompt="You are an expert MTG set theme designer.",
-            model_key="theme_generation" # Key from language_model settings in settings.json
-            # Potentially add temperature or other params via kwargs if needed
+            system_prompt="You are an expert lore writer",
+            model_key="theme_generation"
         )
         print("\nGenerated theme:")
         print(self.set_theme)
@@ -64,6 +63,10 @@ class MTGSetGenerator:
         4. Main mechanical themes and gameplay elements. Don't introduce new mechanics here, just describe how they are used in the set.
         5. Potential synergies between different card types and mechanics
         6. How the theme supports different play styles
+        
+        Note: 
+        
+        - Try to come up with original made-up names for characters, locations, and events. Not combinations of meaningful words like "Blooming Spire" or "Shadow Citadel", but rather unique names.
 
         Try to keep the theme broad enough, and add enough complexity to allow for a variety of card types, and keep the color distribution in mind.
         Be as detailed as possible to create a rich and engaging world for the set.
@@ -75,8 +78,6 @@ class MTGSetGenerator:
             base_prompt = f"""Base the theme on the following prompt: {self.config.theme_prompt}
 
 {base_prompt}"""
-
-        base_prompt += "\n\nThe theme should be original while maintaining the core elements that make Magic engaging."
 
         return base_prompt
 
@@ -125,15 +126,15 @@ Return only the JSON array with no additional text or explanation."""
                 print(f"Warning: Expected a list from JSON conversion, got {type(parsed_json)}. Content: {parsed_json}")
                 # Depending on strictness, either raise error or try to adapt. For now, returning as is.
                 # Consider adding more robust extraction or error handling if LLMs frequently misformat.
-                if parsed_json is None: return [] # Handle case where strategy returns None on error
-                return parsed_json # Or raise TypeError if list is strictly expected.
+                if parsed_json is None: return []  # Handle case where strategy returns None on error
+                return parsed_json  # Or raise TypeError if list is strictly expected.
 
             return parsed_json
         except Exception as e:
             print(f"Error converting card text to JSON using language model: {e}")
             # The strategy's generate_json_response should raise an error if parsing failed,
             # including the raw text in its error message if possible.
-            raise # Re-raise the error from the strategy or a new one.
+            raise  # Re-raise the error from the strategy or a new one.
 
     def generate_batch(self, batch_number: int) -> List[Dict]:
         """Generate a batch of cards using OpenRouter API with simple continuation handling."""
@@ -179,21 +180,23 @@ Return only the JSON array with no additional text or explanation."""
         initial_response_text = self.language_model.generate_text(
             prompt=batch_prompt_text,
             system_prompt="You are an MTG card designer. Follow the batch instructions precisely.",
-            model_key="card_batch_generation" # Key from language_model settings
+            model_key="card_batch_generation"  # Key from language_model settings
         )
 
         try:
             cards_data = self.convert_text_to_json(initial_response_text)
         except Exception as e:
             print(f"Error in initial JSON conversion for batch {batch_number}: {e}")
-            print(f"Raw initial response for batch {batch_number}: {initial_response_text[:500]}...") # Log part of the raw response
+            print(
+                f"Raw initial response for batch {batch_number}: {initial_response_text[:500]}...")  # Log part of the raw response
             cards_data = []
 
         # If we don't have enough cards, try a simple continuation
         # Note: True conversational continuation is complex. This is a simplified approach.
         # A more robust solution might involve resending the whole context or specific instructions.
         if len(cards_data) < expected_cards:
-            print(f"Generated {len(cards_data)} cards, expected {expected_cards} for batch {batch_number}. Attempting continuation...")
+            print(
+                f"Generated {len(cards_data)} cards, expected {expected_cards} for batch {batch_number}. Attempting continuation...")
 
             continuation_prompt = (
                 f"{batch_prompt_text}\n\n"
@@ -208,7 +211,7 @@ Return only the JSON array with no additional text or explanation."""
             continued_response_text = self.language_model.generate_text(
                 prompt=continuation_prompt,
                 system_prompt="You are an MTG card designer completing a batch. Focus on providing only the missing cards.",
-                model_key="card_batch_generation" # Use the same model or a specific continuation model
+                model_key="card_batch_generation"  # Use the same model or a specific continuation model
             )
 
             try:

@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
-# from .models import Config # Using Any for now
-from typing import Any
 
 class LanguageModelStrategy(ABC):
-    # __init__ should not be an abstractmethod if it has a concrete implementation
     def __init__(self, global_config: Any, strategy_specific_config: Dict):
         """
         Initializes the language model strategy.
@@ -28,7 +25,7 @@ class LanguageModelStrategy(ABC):
     def generate_text(self,
                       prompt: str,
                       system_prompt: Optional[str] = None,
-                      model_key: Optional[str] = "default_main", # Use a key to fetch model_id from strategy_config
+                      model_key: Optional[str] = "default_main",  # Use a key to fetch model_id from strategy_config
                       **kwargs: Any) -> str:
         """
         Generates text based on the given prompt.
@@ -49,8 +46,8 @@ class LanguageModelStrategy(ABC):
     def generate_json_response(self,
                                prompt: str,
                                system_prompt: Optional[str] = None,
-                               model_key: Optional[str] = "default_json", # Use a key for JSON-specific model
-                               **kwargs: Any) -> Any: # Could be Dict or List
+                               model_key: Optional[str] = "default_json",  # Use a key for JSON-specific model
+                               **kwargs: Any) -> Any:  # Could be Dict or List
         """
         Generates text expected to be JSON, and attempts to parse it.
         Args:
@@ -67,7 +64,7 @@ class LanguageModelStrategy(ABC):
 
     def _get_model_id(self, model_key: Optional[str]) -> str:
         """Helper to get model_id from strategy_specific_config based on a key."""
-        if not model_key: # Should not happen if defaults are set
+        if not model_key:  # Should not happen if defaults are set
             raise ValueError("model_key cannot be None for _get_model_id")
 
         models_dict = self.strategy_specific_config.get("models", {})
@@ -77,7 +74,8 @@ class LanguageModelStrategy(ABC):
             # Fallback if a specific key (e.g. art_prompt_generation) is not defined, try default_main
             model_id = models_dict.get("default_main")
             if not model_id:
-                raise ValueError(f"Model ID for key '{model_key}' or fallback 'default_main' not found in strategy configuration.")
+                raise ValueError(
+                    f"Model ID for key '{model_key}' or fallback 'default_main' not found in strategy configuration.")
         return model_id
 
     def _get_common_params(self) -> Dict:
@@ -88,7 +86,6 @@ class LanguageModelStrategy(ABC):
         """Helper to get API headers from global_config."""
         if hasattr(self.global_config, 'get_api_headers'):
             return self.global_config.get_api_headers()
-        # Fallback for older Config or if method not present (should be updated in Config)
         return self.global_config.api_headers if hasattr(self.global_config, 'api_headers') else {}
 
     def _get_api_key(self, service_name: str) -> Optional[str]:

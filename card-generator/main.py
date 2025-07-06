@@ -1,34 +1,28 @@
 import json
 import datetime
 import asyncio
+import pathlib
 from typing import Dict, List
 from collections import Counter
 
 from models import Config, Card
-# Strategies will be created via Config object
-# from mtg_set_generator import MTGSetGenerator # Will be initialized with strategies
-# from mtg_art_generator import MTGArtGenerator
-# from mtg_json_converter import MTGJSONConverter
-from mtg_card_renderer import MTGCardRenderer # Assuming this doesn't need LM/Image strategies for now
-from mtg_land_generator import MTGLandGenerator # Assuming this primarily uses MTGArtGenerator
+from mtg_card_renderer import MTGCardRenderer
+from mtg_land_generator import MTGLandGenerator
+from mtg_set_generator import MTGSetGenerator
+from mtg_json_converter import MTGJSONConverter
 
 
 class MTGGeneratorOrchestrator:
     def __init__(self, config: Config):
-        self.config = config # Config object now handles strategy creation
+        self.config = config
 
         # Create strategies via the Config object
         self.language_model_strategy = self.config.create_language_model_strategy()
         self.image_generator_strategy = self.config.create_image_generator_strategy()
 
-        # Initialize components, passing the strategies to them
-        # Need to import the classes here or ensure they are available
-        from mtg_set_generator import MTGSetGenerator
-        from mtg_json_converter import MTGJSONConverter
-
         self.set_generator = MTGSetGenerator(config, self.language_model_strategy)
         self.json_converter = MTGJSONConverter(config, self.language_model_strategy)
-        self.card_renderer = MTGCardRenderer(config) # Renderer might not directly use these strategies
+        self.card_renderer = MTGCardRenderer(config)
 
         # Art generator will be initialized after we have the theme, and will need both strategies
         self.art_generator = None
@@ -41,11 +35,11 @@ class MTGGeneratorOrchestrator:
         Process each batch completely (cards, art, rendering) before moving to the next batch."""
         print("\n=== Starting MTG Set Generation ===")
 
-        from mtg_art_generator import MTGArtGenerator # Import here for late initialization
+        from mtg_art_generator import MTGArtGenerator  # Import here for late initialization
 
         # Initialize the set (load inspiration cards and generate theme using LM strategy)
         print("\n--- Initializing Set ---")
-        self.set_generator.initialize_set() # This now uses the LM strategy for theme
+        self.set_generator.initialize_set()  # This now uses the LM strategy for theme
 
         # Get the theme for art generation
         theme = self.set_generator.set_theme
@@ -54,7 +48,7 @@ class MTGGeneratorOrchestrator:
         self.art_generator = MTGArtGenerator(
             self.config,
             theme,
-            self.language_model_strategy, # For art prompts
+            self.language_model_strategy,  # For art prompts
             self.image_generator_strategy  # For image generation
         )
 
@@ -107,7 +101,13 @@ class MTGGeneratorOrchestrator:
         if self.config.generate_basic_lands:
             print("\n=== Generating Basic Lands ===")
             # Pass the current collector number to continue from where we left off
-            land_generator = MTGLandGenerator(self.config, theme, self.collector_number_counter)
+            land_generator = MTGLandGenerator(
+                self.config,
+                theme,
+                self.collector_number_counter,
+                self.language_model_strategy,
+                self.image_generator_strategy
+            )
             land_cards = land_generator.generate_basic_lands()
 
             # Add lands to the processed cards
@@ -198,6 +198,29 @@ class MTGGeneratorOrchestrator:
 
     def _create_combined_data(self, theme: str, cards: List[Card], stats: Dict) -> Dict:
         """Create the final combined data structure."""
+        # Get current configuration details for the models section
+        language_config = self.config.get_language_model_config()
+        image_config = self.config.get_image_generation_config()
+
+        # Extract strategy and model information
+        language_strategy = language_config.get("strategy", "unknown")
+        image_strategy = image_config.get("strategy", "unknown")
+
+        # Get the main model from the strategy configuration
+        language_strategy_config = language_config.get(language_strategy, {})
+        main_model = language_strategy_config.get("models", {}).get("default_main", "unknown")
+
+        # Get image model information
+        if image_strategy == "replicate":
+            replicate_config = image_config.get("replicate", {})
+            selected_model_type = replicate_config.get("selected_model_type", "unknown")
+            image_model = f"replicate:{selected_model_type}"
+        elif image_strategy == "diffusers":
+            diffusers_config = image_config.get("diffusers", {})
+            image_model = f"diffusers:{diffusers_config.get('model_id', 'unknown')}"
+        else:
+            image_model = f"{image_strategy}:unknown"
+
         return {
             "set_info": {
                 "theme": theme,
@@ -215,9 +238,10 @@ class MTGGeneratorOrchestrator:
                     },
                     "target_color_distribution": self.config.color_distribution,
                     "models": {
-                        "main": self.config.main_model,
-                        "json": self.config.json_model,
-                        "image": self.config.image_model
+                        "language_strategy": language_strategy,
+                        "main": main_model,
+                        "image_strategy": image_strategy,
+                        "image": image_model
                     },
                     "basic_lands": {
                         "enabled": self.config.generate_basic_lands,
@@ -244,71 +268,18 @@ class MTGGeneratorOrchestrator:
 
 
 async def main():
-    # Example complete theme override (you can pass your own theme text here)
-    complete_theme = """
-    # The Shattered Realms of Eltarion
-
-    ## World Description
-    Eltarion was once a harmonious world where five elemental planes intersected in perfect balance. A cataclysmic event called the Convergence shattered this unity, creating unstable overlapping zones where the elemental powers chaotically blend. The denizens of each realm now struggle to survive in this fractured landscape, forming uneasy alliances or waging territorial wars.
-
-    ## Key Factions
-    - The Luminari Conclave (White): Scholars and mages who seek to restore balance through knowledge and order
-    - The Tidecallers (Blue): Adaptable mystics who harness the unpredictable flow of mana through the shattered realms
-    - The Shadowbond Covenant (Black): Opportunists who believe only the strongest should survive and rule the new world
-    - The Volcanic Warband (Red): Passionate warriors embracing the chaos as a path to freedom and self-expression
-    - The Wildgrowth Collective (Green): Druids and beasts attempting to heal the natural order through aggressive restoration
-
-    ## Creature Types
-    The set prominently features Elementals, Wizards, Warriors, Spirits, Beasts, Angels, Demons, Dragons, Merfolk, and Elves, with many creatures exhibiting hybrid characteristics from the blending of realms.
-
-    ## Mechanical Themes
-    - "Convergence" cards that gain additional effects when you control lands of different types
-    - Multicolor emphasis reflecting the blending of elemental powers
-    - Land transformation and land-matters mechanics
-    - Tribal elements for the major factions
-    - Exile and return mechanics representing the unstable nature of reality
-
-    ## Synergies
-    - Land-based ramp strategies that power multicolor threats
-    - Faction-based tribal synergies with cross-faction hybrid creatures
-    - Control strategies using reality-warping exile effects
-    - Aggressive decks exploiting elemental chaos effects
-
-    ## Play Styles
-    The set supports aggressive tribal strategies, midrange value-generating decks, controlling reality-manipulation decks, and five-color convergence ramp decks.
-    """
-
-    # Set configuration
-    # Most operational settings are now loaded from settings.json by the Config class.
-    # csv_file_path is kept here as it's a fundamental path.
-    # Theme overrides can also be passed directly if needed for a specific run.
     config = Config(
         csv_file_path="./assets/mtg_cards_english.csv"
-        # Example of overriding a theme prompt for a specific run,
-        # otherwise it will use the value from settings.json or the Config default.
-        # theme_prompt="A specific theme for this run only: Clockwork Dragons",
-        # complete_theme_override=complete_theme, # Or provide a full theme object
     )
-
-    # Create and run orchestrator
-    # The Config object will load settings from "card-generator/settings.json" (or example)
-    # and will be used to create the appropriate strategies.
     orchestrator = MTGGeneratorOrchestrator(config)
     await orchestrator.generate_complete_set()
 
 
 if __name__ == "__main__":
-    # Ensure settings.json exists or copy from settings.example.json
-    # This is a good place for a small check or instruction to the user.
-    import pathlib
-    settings_file = pathlib.Path("card-generator/settings.json")
-    example_settings_file = pathlib.Path("card-generator/settings.example.json")
+    settings_file = pathlib.Path("./settings.json")
+    example_settings_file = pathlib.Path("./settings.example.json")
     if not settings_file.exists() and example_settings_file.exists():
         print(f"'{settings_file}' not found. Please copy '{example_settings_file}' to '{settings_file}' "
               "and configure your API keys and model preferences.")
-        # For automated environments or first run, you might choose to auto-copy:
-        # import shutil
-        # shutil.copy(example_settings_file, settings_file)
-        # print(f"Copied example settings to '{settings_file}'. Please review and configure.")
 
     asyncio.run(main())

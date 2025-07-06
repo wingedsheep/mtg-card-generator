@@ -1,87 +1,116 @@
 import torch
 from diffusers import StableDiffusionPipeline
-from PIL import Image
-import os
+from pathlib import Path
+
 
 class HuggingFaceDiffusersTool:
     def __init__(self, model_id: str = "runwayml/stable-diffusion-v1-5", device: str = "cuda"):
         """
-        Initializes the HuggingFaceDiffusersTool.
+        Initialize the Hugging Face Diffusers tool.
 
         Args:
-            model_id (str): The ID of the pre-trained model to use from Hugging Face Model Hub.
-            device (str): The device to run the model on ("cuda" or "cpu").
+            model_id: The model identifier from Hugging Face Hub
+            device: Device to run inference on (cuda/cpu)
         """
         self.model_id = model_id
         self.device = device
-        if self.device == "cuda" and not torch.cuda.is_available():
-            print("CUDA is not available. Falling back to CPU.")
-            self.device = "cpu"
+        self.pipe = None
+        self._initialize_pipeline()
 
-        print(f"Loading model {self.model_id} on {self.device}...")
-        self.pipe = StableDiffusionPipeline.from_pretrained(self.model_id)
-        self.pipe = self.pipe.to(self.device)
-        print("Model loaded successfully.")
+    def _initialize_pipeline(self):
+        """Initialize the diffusion pipeline."""
+        try:
+            # Load pipeline with safety checker disabled to prevent None returns
+            self.pipe = StableDiffusionPipeline.from_pretrained(
+                self.model_id,
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                safety_checker=None,
+                feature_extractor=None,
+                requires_safety_checker=False
+            )
 
-    def generate_image(self, prompt: str, output_dir: str = "generated_images",
-                       image_name: str = "generated_image.png",
-                       num_inference_steps: int = 50, guidance_scale: float = 7.5,
-                       height: int = 512, width: int = 512) -> str:
+            self.pipe = self.pipe.to(self.device)
+
+            if self.device == "cuda":
+                try:
+                    self.pipe.enable_attention_slicing()
+                except:
+                    pass
+
+            print(f"Successfully initialized Diffusers pipeline with model: {self.model_id}")
+
+        except Exception as e:
+            print(f"Error initializing Diffusers pipeline: {e}")
+            raise
+
+    def generate_image(self,
+                       prompt: str,
+                       output_dir: str,
+                       image_name: str,
+                       num_inference_steps: int = 50,
+                       guidance_scale: float = 7.5,
+                       height: int = 512,
+                       width: int = 512) -> str:
         """
-        Generates an image based on the given prompt.
+        Generate an image using the diffusion pipeline.
 
         Args:
-            prompt (str): The text prompt to generate the image from.
-            output_dir (str): The directory to save the generated image.
-            image_name (str): The name of the saved image file.
-            num_inference_steps (int): The number of denoising steps.
-            guidance_scale (float): Classifier-free guidance scale.
-            height (int): The height in pixels of the generated image.
-            width (int): The width in pixels of the generated image.
+            prompt: Text prompt for image generation (max 77 tokens)
+            output_dir: Directory to save the generated image
+            image_name: Name for the output image file
+            num_inference_steps: Number of denoising steps
+            guidance_scale: How closely to follow the prompt
+            height: Image height in pixels
+            width: Image width in pixels
 
         Returns:
-            str: The path to the saved image.
+            str: Path to the saved image file
         """
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if self.pipe is None:
+            raise RuntimeError("Pipeline not initialized.")
 
-        print(f"Generating image for prompt: '{prompt}'...")
-        image = self.pipe(
-            prompt,
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale,
-            height=height,
-            width=width
-        ).images[0]
+        # Ensure output directory exists
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
 
-        image_path = os.path.join(output_dir, image_name)
-        image.save(image_path)
-        print(f"Image saved to {image_path}")
+        try:
+            print(f"Generating image with prompt: '{prompt}'\n")
 
-        return image_path
+            # Generate the image
+            with torch.no_grad():
+                result = self.pipe(
+                    prompt=prompt,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    height=height,
+                    width=width
+                )
 
-if __name__ == '__main__':
-    # This is an example of how to use the tool.
-    # It will not run in the current sandbox environment due to installation issues.
+            # Extract the image from the result
+            if hasattr(result, 'images') and result.images and result.images[0] is not None:
+                image = result.images[0]
+            else:
+                raise RuntimeError("Pipeline returned no images or None image.")
 
-    # print("Attempting to initialize HuggingFaceDiffusersTool...")
-    # try:
-    #     diffusers_tool = HuggingFaceDiffusersTool()
-    #     print("Tool initialized.")
+            # Save the image
+            if not image_name.endswith('.png'):
+                image_name += '.png'
 
-    #     prompt = "A fantasy landscape with mountains and a river"
-    #     output_directory = "example_generated_art"
-    #     file_name = "fantasy_landscape.png"
+            image_path = output_path / image_name
+            image.save(image_path)
 
-    #     print(f"Generating image with prompt: '{prompt}'")
-    #     image_path = diffusers_tool.generate_image(
-    #         prompt,
-    #         output_dir=output_directory,
-    #         image_name=file_name
-    #     )
-    #     print(f"Example image generated and saved to: {image_path}")
+            print(f"Successfully generated and saved image to: {image_path}")
+            return str(image_path)
 
-    # except Exception as e:
-    #     print(f"Could not run HuggingFaceDiffusersTool example: {e}")
-    #     print("This is expected in the current environment due to library installation issues.")
-    pass
+        except Exception as e:
+            print(f"Error generating image: {e}")
+            raise
+
+    def clear_cache(self):
+        """Clear GPU cache to free memory."""
+        if self.device == "cuda" and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def __del__(self):
+        """Cleanup when object is destroyed."""
+        self.clear_cache()

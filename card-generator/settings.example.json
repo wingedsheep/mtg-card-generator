@@ -4,7 +4,7 @@
     "replicate": "YOUR_REPLICATE_API_KEY_HERE"
   },
   "api_headers": {
-    "HTTP-Referer": "https://example.com/mtg-card-generator",
+    "HTTP-Referer": "https://github.com/wingedsheep/mtg-card-generator",
     "X-Title": "MTG Card Generator"
   },
   "output_directory_base": "output_sets",
@@ -14,10 +14,10 @@
     "default_output_dir_name": "card_images",
 
     "replicate": {
-      "selected_model_type": "flux",
+      "selected_model_type": "imagen",
       "models": {
         "flux": {
-          "id": "black-forest-labs/FLUX.1-schnell",
+          "id": "black-forest-labs/flux-1.1-pro",
           "params": {
             "aspect_ratio_standard": "5:4",
             "aspect_ratio_saga": "9:16",
@@ -26,7 +26,7 @@
           }
         },
         "imagen": {
-          "id": "ai-forever/kandinsky-2.2",
+          "id": "google/imagen-4",
           "params": {
             "aspect_ratio_standard": "4:3",
             "aspect_ratio_saga": "9:16",
@@ -39,12 +39,18 @@
         "crop_to_4x5_saga": true
       }
     },
+
     "diffusers": {
-      "model_id": "runwayml/stable-diffusion-v1-5",
-      "device": "cuda",
+      "model_id": "stabilityai/stable-diffusion-xl-base-1.0",
+      "device": "auto",
+      "dtype": "auto",
+      "force_fp32_vae": true,
+      "check_for_nans": true,
+      "enable_sequential_cpu_offload": false,
       "params": {
-        "num_inference_steps": 50,
-        "guidance_scale": 7.5
+        "num_inference_steps": 20,
+        "guidance_scale": 7.5,
+        "negative_prompt": "blurry, low quality, distorted, deformed, bad anatomy, worst quality"
       },
       "dimensions": {
         "standard_width": 512,
@@ -60,33 +66,33 @@
     "openrouter": {
       "base_url": "https://openrouter.ai/api/v1",
       "models": {
-        "default_main": "openai/gpt-4o",
-        "default_json": "openai/gpt-4o-mini",
-        "art_prompt_generation": "openai/gpt-4o",
-        "theme_generation": "openai/gpt-4o",
-        "card_batch_generation": "openai/gpt-4o",
-        "json_conversion_from_text": "openai/gpt-4o-mini",
-        "render_format_conversion": "openai/gpt-4o-mini"
+        "default_main": "openai/gpt-4o-2024-11-20",
+        "default_json": "google/gemini-2.5-flash",
+        "art_prompt_generation": "openai/gpt-4o-2024-11-20",
+        "theme_generation": "openai/gpt-4o-2024-11-20",
+        "card_batch_generation": "openai/gpt-4o-2024-11-20",
+        "json_conversion_from_text": "google/gemini-2.5-flash",
+        "render_format_conversion": "google/gemini-2.5-flash"
       },
       "params": {
         "temperature": 0.7,
-        "max_tokens": 2048
+        "max_tokens": 4096
       },
       "json_params": {
         "temperature": 0.2,
-        "max_tokens": 3000
+        "max_tokens": 4096
       }
     },
     "ollama": {
       "host": null,
       "models": {
-        "default_main": "llama3:latest",
-        "default_json": "mistral:instruct",
-        "art_prompt_generation": "llama3:instruct",
-        "theme_generation": "llama3:latest",
-        "card_batch_generation": "llama3:latest",
-        "json_conversion_from_text": "mistral:instruct",
-        "render_format_conversion": "mistral:instruct"
+        "default_main": "llama3.2:1b",
+        "default_json": "llama3.2:1b",
+        "art_prompt_generation": "llama3.2:1b",
+        "theme_generation": "llama3.2:1b",
+        "card_batch_generation": "llama3.2:1b",
+        "json_conversion_from_text": "llama3.2:1b",
+        "render_format_conversion": "llama3.2:1b"
       },
       "params": {
         "temperature": 0.8
@@ -102,23 +108,22 @@
   "operational_settings": {
     "inspiration_cards_count": 50,
     "batches_count": 20,
-    "theme_prompt": "Varied set with many of the creature types from MTG included, don't include anything with time or dimensions in the theme",
+    "theme_prompt": "Varied set with unique lore and factions, many creature types included. The names should be realistic and based on the lore and linguistic history.",
     "complete_theme_override": null,
     "generate_basic_lands": true,
     "land_variations_per_type": 3,
     "rarities_per_batch": {
-        "mythic": 1,
-        "rare": 3,
-        "uncommon": 4,
-        "common": 5
+      "mythic": 1,
+      "rare": 3,
+      "uncommon": 4,
+      "common": 5
     },
     "color_distribution_targets": {
-        "W": 0.2,
-        "U": 0.2,
-        "B": 0.2,
-        "R": 0.2,
-        "G": 0.2
-    },
-    "csv_file_path_comment": "Relative to card-generator directory, usually ./assets/mtg_cards_english.csv. This is better set in Config constructor if varying or outside this file's context."
+      "W": 0.2,
+      "U": 0.2,
+      "B": 0.2,
+      "R": 0.2,
+      "G": 0.2
+    }
   }
 }
