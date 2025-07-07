@@ -1,3 +1,5 @@
+Looking at the code more carefully, I can see the actual model IDs. Here's the corrected README:
+
 # MTG Card Generator
 
 Generate complete Magic: The Gathering card sets using AI. Creates thematically cohesive sets with synergistic mechanics, unique artwork, and proper card balance.
@@ -10,7 +12,7 @@ Generate complete Magic: The Gathering card sets using AI. Creates thematically 
 
 ## What It Does
 
-- **Complete Set Generation**: Creates 100+ card sets with balanced rarities and colors
+- **Complete Set Generation**: Creates 260 cards by default (20 batches × 13 cards each)
 - **AI-Powered Content**: 
   - Generates unique card mechanics, abilities, and flavor text
   - Creates original artwork for every card
@@ -56,7 +58,7 @@ python main.py
 
 The system will:
 1. Generate a unique set theme
-2. Create ~100 cards with proper color/rarity distribution
+2. Create 260 cards with proper color/rarity distribution
 3. Generate AI artwork for each card
 4. Render cards as high-quality images
 5. Save everything to `output_sets/[timestamp]/`
@@ -65,78 +67,119 @@ The system will:
 
 Edit `settings.json` to customize your setup:
 
-### API Keys
-- `openrouter`: Your OpenRouter API key for text generation
-- `replicate`: Your Replicate API key for image generation
+### API Keys Section
+
+The `api_keys` section stores your authentication credentials:
+- **openrouter**: Your OpenRouter API key for text generation
+- **replicate**: Your Replicate API key for image generation
 
 ### Image Generation Settings
 
-**Strategy Options:**
-- `"replicate"` (recommended): Cloud-based, high quality, costs ~$0.05 per image
-- `"diffusers"`: Local generation, free but requires GPU, slower
+The `image_generation` section controls how card artwork is created:
 
-**Replicate Models:**
-- `"imagen"` (default): Google Imagen 3 - excellent quality and fast
-- `"flux"`: Black Forest Labs FLUX - alternative high-quality option
+**strategy**: Choose between "replicate" (cloud-based, recommended) or "diffusers" (local generation)
 
-**Diffusers Settings (if using local):**
-- `model_id`: Which Stable Diffusion model to use (default: `stabilityai/stable-diffusion-xl-base-1.0`)
-- `device`: `"auto"`, `"cuda"` (NVIDIA), `"mps"` (Apple Silicon), or `"cpu"`
-- `dimensions`: Image sizes for different card types
+**Replicate Configuration** (when strategy is "replicate"):
+- **selected_model_type**: Which model to use - "imagen" (default, Google Imagen 4) or "flux" (Black Forest Labs FLUX 1.1 Pro)
+- **models**: Contains configuration for each model type:
+  - **id**: The specific model version (e.g., "google/imagen-4" or "black-forest-labs/flux-1.1-pro")
+  - **params**: Model-specific parameters like output format, aspect ratios, and safety settings
+- **cropping**: Options to crop images to specific aspect ratios after generation
+
+**Diffusers Configuration** (when strategy is "diffusers" for local generation):
+- **model_id**: The Hugging Face model to use (default: "stabilityai/stable-diffusion-xl-base-1.0")
+- **device**: Hardware to use - "auto" (automatic detection), "cuda" (NVIDIA GPU), "mps" (Apple Silicon), or "cpu"
+- **dtype**: Precision setting - "auto", "float32", or "float16"
+- **params**: Generation parameters like number of inference steps and guidance scale
+- **dimensions**: Image sizes for standard cards and saga cards
 
 ### Language Model Settings
 
-**Strategy Options:**
-- `"openrouter"` (recommended): Access to GPT-4, Claude, and other top models
-- `"ollama"`: Local models, free but lower quality
+The `language_model` section configures text generation:
 
-**Model Selection:**
-Different models can be used for different tasks:
-- `default_main`: General text generation
-- `art_prompt_generation`: Creating image prompts
-- `theme_generation`: Developing set themes
-- `card_batch_generation`: Creating card mechanics
-- `json_conversion`: Converting between formats
+**strategy**: Choose between "openrouter" (cloud-based, recommended) or "ollama" (local models)
+
+**OpenRouter Configuration**:
+- **base_url**: API endpoint (default: "https://openrouter.ai/api/v1")
+- **models**: Different models for different tasks:
+  - **default_main**: General text generation (default: "openai/gpt-4o-mini")
+  - **default_json**: JSON-specific tasks
+  - **art_prompt_generation**: Creating image prompts
+  - **theme_generation**: Developing set themes
+  - **card_batch_generation**: Creating card mechanics
+  - **json_conversion_from_text**: Converting text to JSON
+  - **render_format_conversion**: Converting to rendering format
+- **params**: Default parameters like temperature and max_tokens
+- **json_params**: Special parameters for JSON generation tasks
+
+**Ollama Configuration** (for local models):
+- **host**: URL where Ollama is running. Use "http://localhost:11434" for native installation or Docker
+- **models**: Same task-specific model selection as OpenRouter
+- **params**: Generation parameters
+- **json_params**: Parameters for JSON tasks, including format: "json" for structured output
+- **stream**: Whether to stream responses (default: false)
 
 ### Operational Settings
 
-- `inspiration_cards_count`: How many real MTG cards to use as inspiration (default: 50)
-- `batches_count`: Number of card batches to generate (default: 20)
-- `theme_prompt`: Guide the theme generation (e.g., "Epic fantasy with dragons")
-- `complete_theme_override`: Provide your own complete theme instead of generating one
-- `generate_basic_lands`: Whether to create basic land variations (default: true)
-- `land_variations_per_type`: How many art variants per basic land (default: 3)
-- `rarities_per_batch`: Card distribution per batch (1 mythic, 3 rares, 4 uncommons, 5 commons)
-- `color_distribution_targets`: Target percentage for each color (default: 20% each)
+The `operational_settings` section controls the generation process:
 
-## Local Generation Option
+- **inspiration_cards_count**: Number of real MTG cards to analyze for inspiration (default: 50)
+- **batches_count**: How many batches of cards to generate (default: 20)
+- **theme_prompt**: A prompt to guide theme generation, like "Varied set with many creature types"
+- **complete_theme_override**: Provide a complete custom theme instead of generating one (null to disable)
+- **generate_basic_lands**: Whether to create basic land variations (default: true)
+- **land_variations_per_type**: Number of art variants per basic land type (default: 3)
+- **rarities_per_batch**: Card distribution per batch:
+  - mythic: 1 card
+  - rare: 3 cards
+  - uncommon: 4 cards
+  - common: 5 cards
+  - Total: 13 cards per batch × 20 batches = 260 cards
+- **color_distribution_targets**: Target percentage for each color (W/U/B/R/G each at 0.2 = 20%)
 
-While cloud services provide better quality, you can run everything locally:
+### Other Settings
 
-### Local Setup
+- **output_directory_base**: Where to save generated sets (default: "output_sets")
+- **api_headers**: Additional HTTP headers for API requests
 
-1. **For Image Generation**: Install PyTorch with GPU support
-   ```bash
-   # NVIDIA GPU
-   pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-   
-   # Apple Silicon
-   pip3 install torch torchvision torchaudio
-   ```
+## Running Models Locally
 
-2. **For Text Generation**: Use Docker Compose
-   ```bash
-   docker-compose up -d
-   docker exec mtg-ollama ollama pull llama3
-   ```
+Local generation provides complete control and no API costs, though quality may be lower than cloud services.
 
-3. **Configure for local**:
-   ```json
-   {
-     "image_generation": { "strategy": "diffusers" },
-     "language_model": { "strategy": "ollama" }
-   }
-   ```
+### Local Image Generation with Diffusers
+
+Requires a GPU with 8GB+ VRAM for best results. The system will automatically download the selected Stable Diffusion model (2-7GB) on first use. Generation takes 10-60 seconds per image depending on your hardware.
+
+### Local Text Generation with Ollama
+
+Two options for running Ollama:
+
+**Option 1: Docker (Recommended)**
+```bash
+# Start Ollama with Docker Compose
+docker-compose up -d
+
+# Download a model (4-40GB depending on choice)
+docker exec mtg-ollama ollama pull llama3
+
+# In settings.json, set host to "http://localhost:11434"
+```
+
+**Option 2: Native Installation**
+```bash
+# Install from https://ollama.com/
+# Then download models
+ollama pull llama3
+ollama pull mistral  # Good for JSON tasks
+
+# In settings.json, set host to "http://localhost:11434"
+```
+
+Popular model choices:
+- **llama3**: Best general purpose (4.7GB)
+- **mistral**: Excellent for JSON tasks (4.1GB)
+- **llama3.2:1b**: Fast but lower quality (1.3GB)
+- **llama3:70b**: Highest quality but requires 40GB+ RAM
 
 ## Additional Tools
 
@@ -174,8 +217,8 @@ Generated sets are saved to `output_sets/[timestamp]/` containing:
 
 - **Cloud services** (OpenRouter + Replicate) produce the highest quality output
 - **Local models** offer more control and no API costs but lower quality
-- Expect to spend $5-8 in API costs for a complete 100+ card set (mostly image generation)
-- First-time local setup downloads 2-7GB of model files
+- Expect to spend $10-15 in API costs for a complete 260-card set (mostly image generation at ~$0.05 per card)
+- First-time local setup downloads 2-7GB for image models, 4-40GB for language models
 - GPU recommended for local image generation (8GB+ VRAM for best results)
 
 ## Acknowledgments
