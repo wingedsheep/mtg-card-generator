@@ -1,9 +1,3 @@
-Looking at the settings example file, I can see that:
-- For Replicate, the default selected model is "imagen" (not flux)
-- For local Diffusers, the default model is "stabilityai/stable-diffusion-xl-base-1.0"
-
-Here's the updated README with these corrections:
-
 # MTG Card Generator
 
 Generate complete Magic: The Gathering card sets using AI. Creates thematically cohesive sets with synergistic mechanics, unique artwork, and proper card balance.
