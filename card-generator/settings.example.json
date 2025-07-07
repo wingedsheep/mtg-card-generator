@@ -108,7 +108,7 @@
   "operational_settings": {
     "inspiration_cards_count": 100,
     "batches_count": 20,
-    "theme_prompt": "Varied set with unique lore and factions, many creature types included. The names should be realistic and based on the lore and linguistic history.",
+    "theme_prompt": "Start with creating unique lore. Worldbuilding with history and factions. Varied set with many creature types included. Avoid cliches like fractured realms or time warping. Introduce some unique creature types. The names should not be combinations of real words, but should be made up words based on linguistic knowledge. Be varied.",
     "complete_theme_override": null,
     "generate_basic_lands": true,
     "land_variations_per_type": 3,
