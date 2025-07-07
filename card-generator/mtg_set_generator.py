@@ -2,20 +2,20 @@ import csv
 import json
 import random
 from collections import Counter
-from typing import List, Dict
+from typing import List, Dict, Any
+
 from models import Config, Card
+from language_model_strategies import LanguageModelStrategy
 
 
 class MTGSetGenerator:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, language_model_strategy: LanguageModelStrategy):
         self.config = config
+        self.language_model = language_model_strategy
         self.inspiration_cards: List[Card] = []
         self.generated_cards: List[Card] = []
         self.set_theme = ""
-        self.collector_number_counter = 1  # Initialize counter at 1
-
-        # Use the client from the config
-        self.client = config.openai_client
+        self.collector_number_counter = 1
 
     def load_inspiration_cards(self) -> None:
         """Load random cards from CSV file as inspiration."""
@@ -40,16 +40,13 @@ class MTGSetGenerator:
             for card in self.inspiration_cards
         ])
 
-        prompt = self._get_theme_prompt(inspiration_summary)
+        prompt_content = self._get_theme_prompt(inspiration_summary)
 
-        completion = self.client.chat.completions.create(
-            extra_headers=self.config.api_headers,
-            model=self.config.main_model,
-            temperature=1.0,
-            messages=[{"role": "user", "content": prompt}]
+        self.set_theme = self.language_model.generate_text(
+            prompt=prompt_content,
+            system_prompt="You are an expert lore writer",
+            model_key="theme_generation"
         )
-
-        self.set_theme = completion.choices[0].message.content
         print("\nGenerated theme:")
         print(self.set_theme)
 
@@ -66,6 +63,10 @@ class MTGSetGenerator:
         4. Main mechanical themes and gameplay elements. Don't introduce new mechanics here, just describe how they are used in the set.
         5. Potential synergies between different card types and mechanics
         6. How the theme supports different play styles
+        
+        Note: 
+        
+        - Try to come up with original made-up names for characters, locations, and events. Not combinations of meaningful words like "Blooming Spire" or "Shadow Citadel", but rather unique names.
 
         Try to keep the theme broad enough, and add enough complexity to allow for a variety of card types, and keep the color distribution in mind.
         Be as detailed as possible to create a rich and engaging world for the set.
@@ -77,8 +78,6 @@ class MTGSetGenerator:
             base_prompt = f"""Base the theme on the following prompt: {self.config.theme_prompt}
 
 {base_prompt}"""
-
-        base_prompt += "\n\nThe theme should be original while maintaining the core elements that make Magic engaging."
 
         return base_prompt
 
@@ -110,28 +109,32 @@ Cards to convert:
 {cards_text}
 
 Return only the JSON array with no additional text or explanation."""
-
-        completion = self.client.chat.completions.create(
-            extra_headers=self.config.api_headers,
-            model=self.config.main_model,
-            messages=[
-                {"role": "system", "content": "You are a JSON converter."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-
         try:
-            response_text = completion.choices[0].message.content
-            start_idx = response_text.find('[')
-            end_idx = response_text.rfind(']')
-            if start_idx != -1 and end_idx != -1:
-                json_text = response_text[start_idx:end_idx + 1]
-                return json.loads(json_text)
-            raise ValueError("No valid JSON array found in response")
+            # Use the language_model strategy for JSON conversion
+            # The specific model (e.g., "json_conversion_from_text") is chosen by the strategy
+            # from its config loaded from settings.json
+            parsed_json = self.language_model.generate_json_response(
+                prompt=prompt,
+                system_prompt="You are a JSON converter. Output only the JSON array.",
+                model_key="json_conversion_from_text"
+            )
+            if not isinstance(parsed_json, list):
+                # The generate_json_response should ideally return a list based on the prompt.
+                # If it's a dict (e.g. if LLM wrapped it in {"cards": [...]}), try to extract.
+                if isinstance(parsed_json, dict) and "cards" in parsed_json and isinstance(parsed_json["cards"], list):
+                    return parsed_json["cards"]
+                print(f"Warning: Expected a list from JSON conversion, got {type(parsed_json)}. Content: {parsed_json}")
+                # Depending on strictness, either raise error or try to adapt. For now, returning as is.
+                # Consider adding more robust extraction or error handling if LLMs frequently misformat.
+                if parsed_json is None: return []  # Handle case where strategy returns None on error
+                return parsed_json  # Or raise TypeError if list is strictly expected.
+
+            return parsed_json
         except Exception as e:
-            print(f"Error converting to JSON: {e}")
-            print("Raw response:", response_text)
-            raise
+            print(f"Error converting card text to JSON using language model: {e}")
+            # The strategy's generate_json_response should raise an error if parsing failed,
+            # including the raw text in its error message if possible.
+            raise  # Re-raise the error from the strategy or a new one.
 
     def generate_batch(self, batch_number: int) -> List[Dict]:
         """Generate a batch of cards using OpenRouter API with simple continuation handling."""
@@ -171,42 +174,53 @@ Return only the JSON array with no additional text or explanation."""
         )
 
         # Initial generation attempt
-        cards_text = self._get_batch_prompt(current_distribution)
-        completion = self.client.chat.completions.create(
-            extra_headers=self.config.api_headers,
-            model=self.config.main_model,
-            messages=[{"role": "user", "content": cards_text}]
+        batch_prompt_text = self._get_batch_prompt(current_distribution)
+
+        # Use language model strategy for generating the initial batch of card descriptions
+        initial_response_text = self.language_model.generate_text(
+            prompt=batch_prompt_text,
+            system_prompt="You are an MTG card designer. Follow the batch instructions precisely.",
+            model_key="card_batch_generation"  # Key from language_model settings
         )
 
-        initial_response = completion.choices[0].message.content
         try:
-            cards_data = self.convert_text_to_json(initial_response)
+            cards_data = self.convert_text_to_json(initial_response_text)
         except Exception as e:
-            print(f"Error in initial JSON conversion: {e}")
+            print(f"Error in initial JSON conversion for batch {batch_number}: {e}")
+            print(
+                f"Raw initial response for batch {batch_number}: {initial_response_text[:500]}...")  # Log part of the raw response
             cards_data = []
 
         # If we don't have enough cards, try a simple continuation
+        # Note: True conversational continuation is complex. This is a simplified approach.
+        # A more robust solution might involve resending the whole context or specific instructions.
         if len(cards_data) < expected_cards:
-            print(f"Generated {len(cards_data)} cards, expected {expected_cards}. Attempting continuation...")
+            print(
+                f"Generated {len(cards_data)} cards, expected {expected_cards} for batch {batch_number}. Attempting continuation...")
 
-            # Simple continuation request
-            continuation = self.client.chat.completions.create(
-                extra_headers=self.config.api_headers,
-                model=self.config.main_model,
-                messages=[
-                    {"role": "user", "content": cards_text},
-                    {"role": "assistant", "content": initial_response},
-                    {"role": "user",
-                     "content": "continue with the remaining " + str(expected_cards - len(cards_data)) + " cards"}
-                ]
+            continuation_prompt = (
+                f"{batch_prompt_text}\n\n"
+                f"PREVIOUSLY GENERATED TEXT (may be incomplete or contain errors):\n{initial_response_text}\n\n"
+                f"CONTINUATION INSTRUCTION: Please generate the remaining {expected_cards - len(cards_data)} cards, "
+                f"ensuring they are distinct from any cards implied in the 'PREVIOUSLY GENERATED TEXT' and adhere to the original batch request. "
+                f"Output only the new card descriptions."
+            )
+
+            # Using generate_text for continuation, then convert_text_to_json will parse it.
+            # The system prompt might need to be adjusted for continuation.
+            continued_response_text = self.language_model.generate_text(
+                prompt=continuation_prompt,
+                system_prompt="You are an MTG card designer completing a batch. Focus on providing only the missing cards.",
+                model_key="card_batch_generation"  # Use the same model or a specific continuation model
             )
 
             try:
-                additional_cards = self.convert_text_to_json(continuation.choices[0].message.content)
-                cards_data.extend(additional_cards)
-                print(f"Added {len(additional_cards)} cards through continuation")
+                additional_cards_data = self.convert_text_to_json(continued_response_text)
+                cards_data.extend(additional_cards_data)
+                print(f"Added {len(additional_cards_data)} cards through continuation for batch {batch_number}.")
             except Exception as e:
-                print(f"Error in continuation JSON conversion: {e}")
+                print(f"Error in continuation JSON conversion for batch {batch_number}: {e}")
+                print(f"Raw continuation response for batch {batch_number}: {continued_response_text[:500]}...")
 
         # Add collector numbers
         for card_data in cards_data:

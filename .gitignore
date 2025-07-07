@@ -267,3 +267,4 @@ settings.json
 
 # Ignore everything in card-generator/output
 card-generator/output/*
+card-generator/output_sets/*

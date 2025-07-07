@@ -1,27 +1,30 @@
 import json
-from pathlib import Path
-import replicate
+from typing import List
+import time
+
 from models import Card, Config
-from PIL import Image
-from io import BytesIO
+from language_model_strategies import LanguageModelStrategy
+from image_generation_strategies import ImageGeneratorStrategy
 
 
 class MTGArtGenerator:
-    def __init__(self, config: Config, theme: str = None):
+    def __init__(self,
+                 config: Config,
+                 theme: str,
+                 language_model_strategy: LanguageModelStrategy,
+                 image_generator_strategy: ImageGeneratorStrategy):
         self.config = config
         self.theme = theme
+        self.language_model = language_model_strategy
+        self.image_generator = image_generator_strategy
 
-        # Use the client from the config
-        self.client = config.openai_client
-
-    def generate_art_prompt(self, card: Card, attempt: int = 0) -> str:
-        """Generate an art prompt for a given card using OpenRouter API."""
+    def generate_art_prompt_text(self, card: Card, attempt: int = 0) -> str:
+        """Generate an art prompt for a given card using the configured LanguageModelStrategy."""
         theme_context = f"""Set Theme Context:
 {self.theme}
 
 Consider this theme when creating the art prompt. The art should reflect both the card's individual characteristics and the overall set theme.""" if self.theme else ""
 
-        # Add specific instructions for Saga cards
         saga_instructions = ""
         if "Saga" in card.type:
             saga_instructions = """
@@ -30,316 +33,163 @@ The art should be tall rather than wide. Saga cards display art along the right 
 Create a VERTICAL composition that works well with the Saga card layout.
 """
 
-        prompt = f"""Create a detailed art prompt for a Magic: The Gathering card with the following details:
+        # Check if we're using the Diffusers strategy and need shorter prompts
+        image_strategy = self.config.get_image_generation_config().get("strategy", "replicate").lower()
+        is_diffusers_strategy = image_strategy == "diffusers"
 
+        if is_diffusers_strategy:
+            length_instructions = """
+CRITICAL: This prompt will be used with Hugging Face Diffusers which has a 77-token limit. 
+Generate a concise, focused prompt that is MAXIMUM 70 tokens (approximately 50 words).
+Focus on the most essential visual elements only. Be concise but vivid.
+Prioritize the most important visual aspects of the card.
+"""
+        else:
+            length_instructions = """
+- Focus on vivid, detailed scenes reflecting mechanics and flavor.
+- Specify composition, lighting, mood, and key details.
+"""
+
+        prompt_content = f"""Create a detailed art prompt for a Magic: The Gathering card.
 {saga_instructions}
-
-Theme:
-{theme_context}
-
+Theme: {theme_context}
 Card Name: {card.name}
 Type: {card.type}
 Rarity: {card.rarity}
 Card Text: {card.text}
 Flavor Text: {card.flavor}
 Colors: {', '.join(card.colors) if card.colors else 'Colorless'}
-Power/Toughness: {card.power}/{card.toughness} (if applicable)
+P/T: {card.power}/{card.toughness} (if applicable)
 Description: {card.description}
 
-Look at all the details of the card, like the type, rarity, card text, flavor text, colors, and power/toughness when creating the art prompt.
+Instructions for prompt generation:
+{length_instructions}
+- Start with "Oil on canvas painting. Magic the gathering art. Rough brushstrokes."
+- Ensure prompt is safe for work.
+- If a character name is present, include their full name.
+- Return only the prompt text.
+{f"Retry attempt {attempt}: Focus on safety and clarity." if attempt > 0 else ""}
+"""
 
-Make sure that the prompt fits the style of Magic: The Gathering art and captures the essence of the card.
-Say something about the composition, lighting, mood, and important details in the art prompt.
-
-{f"Please make sure it is a really SAFE prompt! Don't include words that could trigger the NSFW filters. This is crucial." if attempt > 1 else ""} 
-
-The prompt should begin with "Oil on canvas painting. Magic the gathering art. Rough brushstrokes."
-Focus on creating a vivid, detailed scene that captures the essence of the card's mechanics and flavor.
-The description should be specific about composition, lighting, mood, and important details.
-Include details about the art style and technical aspects at the end.
-
-Create something unique, and add a touch of your own creativity to the prompt.
-
-If a character name is present, make sure to include their full name in the prompt.
-Make sure the prompt fits the theme context provided above.
-
-Example prompt: 
-
-``` 
-Example 1:
-Oil on canvas painting. Rough brushstrokes. A wild-eyed goblin wizard perches atop a 
-rock formation in his cave laboratory. His unkempt red hair stands on end, burning at the tips with magical fire that 
-doesn't harm him. Red mana crackles like lightning around his hands, and his tattered robes smoke from magical 
-mishaps. Behind him, a contraption of copper pipes, glass tubes, and crystals spews chaotic flame. Burning spell 
-scrolls float around him as he grins with manic glee, his experiment spiraling out of control. The cave walls reflect 
-orange-red firelight, and burnt artifacts litter the ground. Small explosions pop like magical fireworks in the 
-background. Crisp details emphasize the chaotic energy and magical power, particularly in the interplay of fire and 
-magical effects. Wizard. Oil on canvas with fine details.
-
-Example 2: Oil on canvas painting. Rough brushstrokes. Ancient forest grove bathed in 
-emerald light. Massive moss-covered tree roots form archways over clear pools. Glowing white flowers spiral across 
-the forest floor. Ethereal mist and crystal formations weave between towering trunks. Oil on canvas with fine details. 
-Emphasis on natural patterns and dappled light through the canopy. Oil on 
-canvas artwork. 
-``` 
-
-{f"Don't put any words in the prompt that might be considered harmful by anyone. Make it really safe!" if attempt > 4 else ""}
-
-Return only the prompt text with no additional explanation."""
-
-        completion = self.client.chat.completions.create(
-            extra_headers=self.config.api_headers,
-            model=self.config.main_model,
-            messages=[{"role": "user", "content": prompt}]
+        # Use the language model strategy to generate the art prompt
+        art_prompt_text = self.language_model.generate_text(
+            prompt=prompt_content,
+            system_prompt="You are an expert MTG art prompt generator.",
+            model_key="art_prompt_generation"  # Key from language_model settings
         )
+        return art_prompt_text.strip()
 
-        return completion.choices[0].message.content
-
-    def save_card_data(self, card: Card, prompt: str, image_path: Path) -> None:
-        """Save card data and prompt to JSON."""
-        # Get card data as dictionary
+    def save_card_json_with_art_details(self, card: Card) -> None:
+        """Saves the card data (including art_prompt and image_path) to a JSON file."""
         card_dict = card.to_dict()
+        # Ensure the output path uses the global config's output_dir for the set
+        # The image_path on the card should already be the final absolute path.
+        json_path = self.config.get_output_path(f"{card.name.replace(' ', '_')}.json")
 
-        # Wrap the card data in the format expected by the converter
-        # This matches the format used in mtg_land_generator.py
+        # The structure for the JSON file seems to be a dict with a "card" key
         output_data = {"card": card_dict}
 
-        json_path = self.config.get_output_path(f"{card.name.replace(' ', '_')}.json")
+        json_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(output_data, f, indent=2)
+        print(f"Card data with art details saved to {json_path}")
 
-    def crop_to_5x4_ratio(self, image_data):
-        """Crop an image to 5:4 aspect ratio, keeping the center portion.
-
-        Args:
-            image_data: Image data as bytes
-
-        Returns:
-            bytes: The cropped image data
+    def generate_and_save_card_art(self, card: Card, art_prompt: str, max_retries: int = 3,
+                                   retry_delay: int = 5) -> str:
         """
-        # Open the image using PIL
-        image = Image.open(BytesIO(image_data))
-        width, height = image.size
-
-        # Calculate current aspect ratio
-        current_ratio = width / height
-        target_ratio = 5 / 4
-
-        if abs(current_ratio - target_ratio) < 0.01:
-            # Already close enough to 5:4, return as-is
-            return image_data
-
-        # Calculate new dimensions
-        if current_ratio > target_ratio:
-            # Image is too wide - crop width
-            new_width = int(height * target_ratio)
-            left = (width - new_width) // 2
-            right = left + new_width
-            cropped_image = image.crop((left, 0, right, height))
-        else:
-            # Image is too tall - crop height
-            new_height = int(width / target_ratio)
-            top = (height - new_height) // 2
-            bottom = top + new_height
-            cropped_image = image.crop((0, top, width, bottom))
-
-        # Convert back to bytes
-        output = BytesIO()
-        cropped_image.save(output, format=image.format or 'PNG')
-        return output.getvalue()
-
-    def crop_to_4x5_ratio(self, image_data):
-        """Crop an image to 4:5 aspect ratio (vertical), keeping the center portion.
-
-        Args:
-            image_data: Image data as bytes
-
-        Returns:
-            bytes: The cropped image data
+        Generates image using the configured ImageGeneratorStrategy and saves it.
+        Returns the absolute path to the saved image.
         """
-        # Open the image using PIL
-        image = Image.open(BytesIO(image_data))
-        width, height = image.size
-
-        # Calculate current aspect ratio
-        current_ratio = width / height
-        target_ratio = 4 / 5  # Vertical aspect ratio (inverse of 5:4)
-
-        if abs(current_ratio - target_ratio) < 0.01:
-            # Already close enough to 4:5, return as-is
-            return image_data
-
-        # Calculate new dimensions
-        if current_ratio > target_ratio:
-            # Image is too wide - crop width
-            new_width = int(height * target_ratio)
-            left = (width - new_width) // 2
-            right = left + new_width
-            cropped_image = image.crop((left, 0, right, height))
-        else:
-            # Image is too tall - crop height
-            new_height = int(width / target_ratio)
-            top = (height - new_height) // 2
-            bottom = top + new_height
-            cropped_image = image.crop((0, top, width, bottom))
-
-        # Convert back to bytes
-        output = BytesIO()
-        cropped_image.save(output, format=image.format or 'PNG')
-        return output.getvalue()
-
-    def generate_card_art(self, card: Card, max_retries: int = 5, retry_delay: int = 3) -> tuple[str, BytesIO]:
-        """Generate both art prompt and image for a card with retry logic.
-
-        Args:
-            card: The card to generate art for
-            max_retries: Maximum number of retry attempts (default: 3)
-            retry_delay: Delay between retries in seconds (default: 5)
-
-        Returns:
-            tuple[str, bytes]: The successful art prompt and image data
-
-        Raises:
-            Exception: If all retry attempts fail
-        """
-        import time
+        image_name = f"{card.name.replace(' ', '_')}.png"
 
         for attempt in range(max_retries):
             try:
-                # Generate art prompt
-                art_prompt = self.generate_art_prompt(card, attempt)
-                print(f"Generated art prompt (attempt {attempt + 1}): {art_prompt}...")
-
-                # Get the active Replicate model
-                active_model = self.config.get_active_replicate_model()
-                print(f"Using image model: {active_model}")
-
-                # Configure model-specific parameters, passing the card to check if it's a Saga
-                model_params = self._get_model_params(art_prompt, card)
-
-                # Keep track of the original aspect ratio for later processing
-                original_aspect_ratio = model_params.get("aspect_ratio", "5:4")
-
-                # Generate image using the prompt with selected Replicate model
-                image_response = replicate.run(
-                    active_model,
-                    input=model_params
+                # The strategy is responsible for saving the image and returning its path
+                # It uses self.config.output_dir (via global_config) and its own configured subdirectories.
+                saved_image_path = self.image_generator.generate_image(
+                    art_prompt=art_prompt,
+                    card=card,
+                    output_dir=self.config.output_dir,  # Pass the main set output dir
+                    image_name=image_name
                 )
-
-                # Convert response to bytes
-                if hasattr(image_response, 'read'):
-                    image_data = image_response.read()
-                else:
-                    # If it's a URL or other format
-                    import requests
-                    image_data = requests.get(image_response).content
-
-                # Check if we need to crop
-                if original_aspect_ratio != "5:4" and original_aspect_ratio != "4:5":
-                    # For Saga cards (vertical)
-                    if "Saga" in card.type:
-                        print(f"Cropping image from {original_aspect_ratio} to 4:5 (vertical for Saga)...")
-                        image_data = self.crop_to_4x5_ratio(image_data)
-                    else:
-                        # For regular cards (horizontal)
-                        print(f"Cropping image from {original_aspect_ratio} to 5:4...")
-                        image_data = self.crop_to_5x4_ratio(image_data)
-
-                # Create a BytesIO object that behaves like a file
-                return art_prompt, BytesIO(image_data)
-
+                return saved_image_path
             except Exception as e:
-                if attempt == max_retries - 1:  # Last attempt
-                    print(f"Failed to generate art after {max_retries} attempts: {str(e)}")
-                    return "", BytesIO(b"")
-                else:
-                    print(f"Attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-
-    def _get_model_params(self, prompt: str, card: Card = None) -> dict:
-        """Get model-specific parameters based on the selected image model."""
-        active_model_name = self.config.image_model
-
-        # Check if this is a Saga card to determine orientation
-        is_saga = card and "Saga" in card.type
-
-        if active_model_name == "flux":
-            if is_saga:
-                # Vertical aspect ratio for Sagas (inverse of standard)
-                return {
-                    "prompt": prompt,
-                    "aspect_ratio": "9:16",  # Vertical for Sagas
-                    "safety_tolerance": 6,
-                    "prompt_upsampling": True
-                }
-            else:
-                # Standard horizontal aspect ratio
-                return {
-                    "prompt": prompt,
-                    "aspect_ratio": "5:4",
-                    "safety_tolerance": 6,
-                    "prompt_upsampling": True
-                }
-        elif active_model_name == "imagen":
-            if is_saga:
-                # Vertical aspect ratio for Sagas
-                return {
-                    "prompt": prompt,
-                    "aspect_ratio": "9:16",  # Vertical for Sagas
-                    "safety_filter_level": "block_only_high"
-                }
-            else:
-                # Standard horizontal aspect ratio
-                return {
-                    "prompt": prompt,
-                    "aspect_ratio": "4:3",
-                    "safety_filter_level": "block_only_high"
-                }
-        else:
-            # Default to Flux parameters
-            if is_saga:
-                return {
-                    "prompt": prompt,
-                    "aspect_ratio": "9:16",
-                    "safety_tolerance": 6,
-                    "prompt_upsampling": True
-                }
-            else:
-                return {
-                    "prompt": prompt,
-                    "aspect_ratio": "5:4",
-                    "safety_tolerance": 6,
-                    "prompt_upsampling": True
-                }
+                print(f"Error generating image for '{card.name}' (Attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt == max_retries - 1:
+                    raise Exception(f"Failed to generate art for {card.name} after {max_retries} attempts.") from e
+                time.sleep(retry_delay)
+        return ""  # Should not be reached if max_retries > 0
 
     def process_card(self, card: Card) -> Card:
-        """Process a single card, generating art and saving data."""
-        print(f"\nProcessing card: {card.name}")
+        """Process a single card: generate art prompt, generate image, update card."""
+        print(f"\nProcessing art for card: {card.name}")
 
-        # Generate art prompt and image
-        print("Generating art and image...")
-        art_prompt, image_response = self.generate_card_art(card)
+        # 1. Generate Art Prompt Text
+        # Retry logic for prompt generation can be added here if needed, or assumed to be simpler.
+        art_prompt_text = ""
+        for attempt in range(3):  # Simple retry for prompt generation
+            try:
+                art_prompt_text = self.generate_art_prompt_text(card, attempt=attempt)
 
-        # Save image
-        image_path = self.config.get_output_path(f"{card.name.replace(' ', '_')}.png")
-        with open(image_path, "wb") as f:
-            f.write(image_response.read())
-        print(f"Image saved to {image_path}")
+                # Check if we're using diffusers and log the prompt length for debugging
+                image_strategy = self.config.get_image_generation_config().get("strategy", "replicate").lower()
+                if image_strategy == "diffusers":
+                    # Rough token count estimation (words * 1.3 for subword tokens)
+                    estimated_tokens = len(art_prompt_text.split()) * 1.3
+                    print(
+                        f"Generated art prompt for diffusers (~{estimated_tokens:.0f} tokens): {art_prompt_text[:100]}...")
+                    if estimated_tokens > 77:
+                        print(f"Warning: Prompt may exceed 77-token limit ({estimated_tokens:.0f} estimated tokens)")
+                else:
+                    print(f"Generated art prompt (attempt {attempt + 1}): {art_prompt_text[:100]}...")
 
-        # Update card with art data
-        card.art_prompt = art_prompt
-        card.image_path = str(image_path)
+                if art_prompt_text:  # Basic validation
+                    break
+            except Exception as e:
+                print(f"Error generating art prompt for {card.name} (attempt {attempt + 1}): {e}")
+                if attempt == 2:
+                    print(f"Failed to generate art prompt for {card.name}. Skipping art.")
+                    card.art_prompt = "Error: Failed to generate prompt"
+                    # card.image_path remains None
+                    self.save_card_json_with_art_details(card)  # Save with error state
+                    return card  # Return card without art if prompt fails critically
+                time.sleep(2)
 
-        # Save card data
-        self.save_card_data(card, art_prompt, image_path)
-        print(f"Card data saved")
+        if not art_prompt_text:  # If loop finished without a good prompt
+            print(f"Art prompt generation ultimately failed for {card.name}. Skipping art.")
+            card.art_prompt = "Error: Prompt generation failed after retries"
+            self.save_card_json_with_art_details(card)
+            return card
+
+        card.art_prompt = art_prompt_text
+
+        # 2. Generate and Save Image using the strategy
+        try:
+            # The image generation strategy handles its own retries internally if designed so,
+            # or we can wrap its call in retries here. The current design implies generate_and_save_card_art handles retries.
+            saved_image_path_str = self.generate_and_save_card_art(card, art_prompt_text)
+            card.image_path = saved_image_path_str  # Store the absolute path
+            print(f"Image for {card.name} generated and path set to: {card.image_path}")
+        except Exception as e:
+            print(f"Failed to generate and save image for {card.name}: {e}")
+            card.image_path = None  # Ensure path is None if art generation fails
+            # Art prompt is still saved, image_path indicates failure.
+
+        # 3. Save/Update Card JSON data (includes art_prompt and image_path)
+        # This is crucial to do after art generation attempt, regardless of success,
+        # to save the art_prompt and the status of image_path.
+        self.save_card_json_with_art_details(card)
 
         return card
 
-    def process_cards(self, cards: list[Card]) -> list[Card]:
-        """Process a list of cards, generating art and saving data."""
-        processed_cards = []
-        for card in cards:
-            processed_card = self.process_card(card)
-            processed_cards.append(processed_card)
-        return processed_cards
+    def process_cards(self, cards: List[Card]) -> List[Card]:
+        """Process a list of cards, generating art and saving data for each."""
+        processed_cards_with_art = []
+        for card_obj in cards:
+            # Ensure card_obj is indeed a Card instance
+            if not isinstance(card_obj, Card):
+                print(f"Warning: Expected a Card object, got {type(card_obj)}. Skipping.")
+                continue
+            updated_card = self.process_card(card_obj)
+            processed_cards_with_art.append(updated_card)
+        return processed_cards_with_art

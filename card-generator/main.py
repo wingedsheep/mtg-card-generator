@@ -1,29 +1,30 @@
 import json
 import datetime
 import asyncio
+import pathlib
 from typing import Dict, List
 from collections import Counter
 
 from models import Config, Card
-from mtg_set_generator import MTGSetGenerator
-from mtg_art_generator import MTGArtGenerator
-from mtg_json_converter import MTGJSONConverter
 from mtg_card_renderer import MTGCardRenderer
 from mtg_land_generator import MTGLandGenerator
+from mtg_set_generator import MTGSetGenerator
+from mtg_json_converter import MTGJSONConverter
 
 
 class MTGGeneratorOrchestrator:
     def __init__(self, config: Config):
         self.config = config
 
-        # Initialize the clients from the config
-        self.config.initialize_clients()
+        # Create strategies via the Config object
+        self.language_model_strategy = self.config.create_language_model_strategy()
+        self.image_generator_strategy = self.config.create_image_generator_strategy()
 
-        # Initialize components with unified config
-        self.set_generator = MTGSetGenerator(config)
-        self.json_converter = MTGJSONConverter(config)
+        self.set_generator = MTGSetGenerator(config, self.language_model_strategy)
+        self.json_converter = MTGJSONConverter(config, self.language_model_strategy)
         self.card_renderer = MTGCardRenderer(config)
-        # Art generator will be initialized after we have the theme
+
+        # Art generator will be initialized after we have the theme, and will need both strategies
         self.art_generator = None
 
         # Track the collector number counter to pass to land generator
@@ -34,15 +35,22 @@ class MTGGeneratorOrchestrator:
         Process each batch completely (cards, art, rendering) before moving to the next batch."""
         print("\n=== Starting MTG Set Generation ===")
 
-        # Initialize the set (load inspiration cards and generate theme)
+        from mtg_art_generator import MTGArtGenerator  # Import here for late initialization
+
+        # Initialize the set (load inspiration cards and generate theme using LM strategy)
         print("\n--- Initializing Set ---")
-        self.set_generator.initialize_set()
+        self.set_generator.initialize_set()  # This now uses the LM strategy for theme
 
         # Get the theme for art generation
         theme = self.set_generator.set_theme
 
-        # Initialize art generator with theme
-        self.art_generator = MTGArtGenerator(self.config, theme)
+        # Initialize art generator with theme and strategies
+        self.art_generator = MTGArtGenerator(
+            self.config,
+            theme,
+            self.language_model_strategy,  # For art prompts
+            self.image_generator_strategy  # For image generation
+        )
 
         # Process each batch completely
         all_processed_cards = []
@@ -93,7 +101,13 @@ class MTGGeneratorOrchestrator:
         if self.config.generate_basic_lands:
             print("\n=== Generating Basic Lands ===")
             # Pass the current collector number to continue from where we left off
-            land_generator = MTGLandGenerator(self.config, theme, self.collector_number_counter)
+            land_generator = MTGLandGenerator(
+                self.config,
+                theme,
+                self.collector_number_counter,
+                self.language_model_strategy,
+                self.image_generator_strategy
+            )
             land_cards = land_generator.generate_basic_lands()
 
             # Add lands to the processed cards
@@ -184,6 +198,29 @@ class MTGGeneratorOrchestrator:
 
     def _create_combined_data(self, theme: str, cards: List[Card], stats: Dict) -> Dict:
         """Create the final combined data structure."""
+        # Get current configuration details for the models section
+        language_config = self.config.get_language_model_config()
+        image_config = self.config.get_image_generation_config()
+
+        # Extract strategy and model information
+        language_strategy = language_config.get("strategy", "unknown")
+        image_strategy = image_config.get("strategy", "unknown")
+
+        # Get the main model from the strategy configuration
+        language_strategy_config = language_config.get(language_strategy, {})
+        main_model = language_strategy_config.get("models", {}).get("default_main", "unknown")
+
+        # Get image model information
+        if image_strategy == "replicate":
+            replicate_config = image_config.get("replicate", {})
+            selected_model_type = replicate_config.get("selected_model_type", "unknown")
+            image_model = f"replicate:{selected_model_type}"
+        elif image_strategy == "diffusers":
+            diffusers_config = image_config.get("diffusers", {})
+            image_model = f"diffusers:{diffusers_config.get('model_id', 'unknown')}"
+        else:
+            image_model = f"{image_strategy}:unknown"
+
         return {
             "set_info": {
                 "theme": theme,
@@ -201,9 +238,10 @@ class MTGGeneratorOrchestrator:
                     },
                     "target_color_distribution": self.config.color_distribution,
                     "models": {
-                        "main": self.config.main_model,
-                        "json": self.config.json_model,
-                        "image": self.config.image_model
+                        "language_strategy": language_strategy,
+                        "main": main_model,
+                        "image_strategy": image_strategy,
+                        "image": image_model
                     },
                     "basic_lands": {
                         "enabled": self.config.generate_basic_lands,
@@ -230,79 +268,18 @@ class MTGGeneratorOrchestrator:
 
 
 async def main():
-    # Example complete theme override (you can pass your own theme text here)
-    complete_theme = """
-    # The Shattered Realms of Eltarion
-
-    ## World Description
-    Eltarion was once a harmonious world where five elemental planes intersected in perfect balance. A cataclysmic event called the Convergence shattered this unity, creating unstable overlapping zones where the elemental powers chaotically blend. The denizens of each realm now struggle to survive in this fractured landscape, forming uneasy alliances or waging territorial wars.
-
-    ## Key Factions
-    - The Luminari Conclave (White): Scholars and mages who seek to restore balance through knowledge and order
-    - The Tidecallers (Blue): Adaptable mystics who harness the unpredictable flow of mana through the shattered realms
-    - The Shadowbond Covenant (Black): Opportunists who believe only the strongest should survive and rule the new world
-    - The Volcanic Warband (Red): Passionate warriors embracing the chaos as a path to freedom and self-expression
-    - The Wildgrowth Collective (Green): Druids and beasts attempting to heal the natural order through aggressive restoration
-
-    ## Creature Types
-    The set prominently features Elementals, Wizards, Warriors, Spirits, Beasts, Angels, Demons, Dragons, Merfolk, and Elves, with many creatures exhibiting hybrid characteristics from the blending of realms.
-
-    ## Mechanical Themes
-    - "Convergence" cards that gain additional effects when you control lands of different types
-    - Multicolor emphasis reflecting the blending of elemental powers
-    - Land transformation and land-matters mechanics
-    - Tribal elements for the major factions
-    - Exile and return mechanics representing the unstable nature of reality
-
-    ## Synergies
-    - Land-based ramp strategies that power multicolor threats
-    - Faction-based tribal synergies with cross-faction hybrid creatures
-    - Control strategies using reality-warping exile effects
-    - Aggressive decks exploiting elemental chaos effects
-
-    ## Play Styles
-    The set supports aggressive tribal strategies, midrange value-generating decks, controlling reality-manipulation decks, and five-color convergence ramp decks.
-    """
-
-    # Set configuration
     config = Config(
-        csv_file_path="./assets/mtg_cards_english.csv",
-        inspiration_cards_count=50,  # Number of cards to use as inspiration
-        batches_count=20,  # Number of batches to generate
-
-        # Optional theme prompt (will be ignored if complete_theme_override is provided)
-        theme_prompt="Varied set with many of the creature types from MTG included, don't include anything with time or dimensions in the theme",
-
-        # Uncomment the line below to use a complete theme override instead of generating one
-        # complete_theme_override=complete_theme,
-
-        # Basic land generation
-        generate_basic_lands=True,
-        land_variations_per_type=3,
-
-        # Rarity distribution per batch
-        mythics_per_batch=1,
-        rares_per_batch=3,
-        uncommons_per_batch=4,
-        commons_per_batch=5,
-
-        # Color balance target (percentage)
-        color_distribution={
-            "W": 0.2,  # White
-            "U": 0.2,  # Blue
-            "B": 0.2,  # Black
-            "R": 0.2,  # Red
-            "G": 0.2  # Green
-        },
-
-        # Image generation model (options: "flux" or "imagen")
-        image_model="imagen"
+        csv_file_path="./assets/mtg_cards_english.csv"
     )
-
-    # Create and run orchestrator
     orchestrator = MTGGeneratorOrchestrator(config)
     await orchestrator.generate_complete_set()
 
 
 if __name__ == "__main__":
+    settings_file = pathlib.Path("./settings.json")
+    example_settings_file = pathlib.Path("./settings.example.json")
+    if not settings_file.exists() and example_settings_file.exists():
+        print(f"'{settings_file}' not found. Please copy '{example_settings_file}' to '{settings_file}' "
+              "and configure your API keys and model preferences.")
+
     asyncio.run(main())

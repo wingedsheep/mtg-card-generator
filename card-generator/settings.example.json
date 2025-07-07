@@ -1,17 +1,129 @@
 {
-  "openrouter": {
-    "apiKey": "your-openrouter-api-key"
+  "api_keys": {
+    "openrouter": "YOUR_OPENROUTER_API_KEY_HERE",
+    "replicate": "YOUR_REPLICATE_API_KEY_HERE"
   },
-  "replicate": {
-    "apiKey": "your-replicate-api-key"
+  "api_headers": {
+    "HTTP-Referer": "https://github.com/wingedsheep/mtg-card-generator",
+    "X-Title": "MTG Card Generator"
   },
-  "models": {
-    "main": "google/gemini-2.5-pro-preview",
-    "json": "google/gemini-2.5-flash-preview",
-    "image_model": "imagen",
+  "output_directory_base": "output_sets",
+
+  "image_generation": {
+    "strategy": "replicate",
+    "default_output_dir_name": "card_images",
+
     "replicate": {
-      "flux": "black-forest-labs/flux-1.1-pro",
-      "imagen": "google/imagen-4"
+      "selected_model_type": "imagen",
+      "models": {
+        "flux": {
+          "id": "black-forest-labs/flux-1.1-pro",
+          "params": {
+            "aspect_ratio_standard": "5:4",
+            "aspect_ratio_saga": "9:16",
+            "safety_tolerance": 6,
+            "prompt_upsampling": true
+          }
+        },
+        "imagen": {
+          "id": "google/imagen-4",
+          "params": {
+            "aspect_ratio_standard": "4:3",
+            "aspect_ratio_saga": "9:16",
+            "safety_filter_level": "block_only_high"
+          }
+        }
+      },
+      "cropping": {
+        "crop_to_5x4_standard": true,
+        "crop_to_4x5_saga": true
+      }
+    },
+
+    "diffusers": {
+      "model_id": "stabilityai/stable-diffusion-xl-base-1.0",
+      "device": "auto",
+      "dtype": "auto",
+      "force_fp32_vae": true,
+      "check_for_nans": true,
+      "enable_sequential_cpu_offload": false,
+      "params": {
+        "num_inference_steps": 20,
+        "guidance_scale": 7.5,
+        "negative_prompt": "blurry, low quality, distorted, deformed, bad anatomy, worst quality"
+      },
+      "dimensions": {
+        "standard_width": 512,
+        "standard_height": 512,
+        "saga_width": 512,
+        "saga_height": 768
+      }
+    }
+  },
+
+  "language_model": {
+    "strategy": "openrouter",
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "models": {
+        "default_main": "openai/gpt-4o-2024-11-20",
+        "default_json": "google/gemini-2.5-flash",
+        "art_prompt_generation": "openai/gpt-4o-2024-11-20",
+        "theme_generation": "openai/gpt-4o-2024-11-20",
+        "card_batch_generation": "openai/gpt-4o-2024-11-20",
+        "json_conversion_from_text": "google/gemini-2.5-flash",
+        "render_format_conversion": "google/gemini-2.5-flash"
+      },
+      "params": {
+        "temperature": 0.7,
+        "max_tokens": 4096
+      },
+      "json_params": {
+        "temperature": 0.2,
+        "max_tokens": 4096
+      }
+    },
+    "ollama": {
+      "host": null,
+      "models": {
+        "default_main": "llama3.2:1b",
+        "default_json": "llama3.2:1b",
+        "art_prompt_generation": "llama3.2:1b",
+        "theme_generation": "llama3.2:1b",
+        "card_batch_generation": "llama3.2:1b",
+        "json_conversion_from_text": "llama3.2:1b",
+        "render_format_conversion": "llama3.2:1b"
+      },
+      "params": {
+        "temperature": 0.8
+      },
+      "json_params": {
+         "temperature": 0.3,
+         "format": "json"
+      },
+      "stream": false
+    }
+  },
+
+  "operational_settings": {
+    "inspiration_cards_count": 100,
+    "batches_count": 20,
+    "theme_prompt": "Varied set with unique lore and factions, many creature types included. The names should be realistic and based on the lore and linguistic history.",
+    "complete_theme_override": null,
+    "generate_basic_lands": true,
+    "land_variations_per_type": 3,
+    "rarities_per_batch": {
+      "mythic": 1,
+      "rare": 3,
+      "uncommon": 4,
+      "common": 5
+    },
+    "color_distribution_targets": {
+      "W": 0.2,
+      "U": 0.2,
+      "B": 0.2,
+      "R": 0.2,
+      "G": 0.2
     }
   }
 }
