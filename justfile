@@ -16,6 +16,14 @@ install-browsers:
 generate:
     cd card-generator && python main.py
 
+# Resume the latest incomplete set
+resume:
+    cd card-generator && python main.py --resume
+
+# Resume a specific incomplete set by ID
+resume-set SET_ID:
+    cd card-generator && python main.py --resume "{{SET_ID}}"
+
 # Re-render cards from an existing output folder (opens folder picker)
 rerender:
     cd card-generator && python tools/batch_rerender.py

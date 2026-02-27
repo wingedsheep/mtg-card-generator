@@ -394,6 +394,18 @@ Return only the JSON array with no additional text or explanation."""
         for batch_num in range(1, self.config.batches_count + 1):
             self.generate_batch_cards(batch_num)
 
+    def restore_state(self, theme: str, cards: List[Card], collector_number_counter: int) -> None:
+        """Restore generator state when resuming an incomplete set."""
+        self.set_theme = theme
+        self.generated_cards = cards
+        self.collector_number_counter = collector_number_counter
+
+        # Load inspiration cards (needed for batch prompts that reference them)
+        self.load_inspiration_cards()
+
+        print(f"Restored state: {len(cards)} cards, collector_number at {collector_number_counter}")
+        print(f"Theme loaded ({len(theme)} chars)")
+
     def save_progress(self) -> None:
         """Save current progress to JSON file."""
         output = {

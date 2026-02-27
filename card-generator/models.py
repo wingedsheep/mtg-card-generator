@@ -35,6 +35,9 @@ class Config:
     generate_basic_lands: bool = True
     land_variations_per_type: int = 3
 
+    # Resume support
+    resume_set_id: Optional[str] = None
+
     # Internal state
     set_id: str = field(init=False)
     output_dir: Path = field(init=False)
@@ -43,7 +46,10 @@ class Config:
     settings_data: Dict = field(init=False, default_factory=dict)
 
     def __post_init__(self):
-        self.set_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        if self.resume_set_id:
+            self.set_id = self.resume_set_id
+        else:
+            self.set_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         self._load_settings_from_json()
         self._apply_operational_settings()
 
