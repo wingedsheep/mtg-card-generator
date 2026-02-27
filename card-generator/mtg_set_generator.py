@@ -56,20 +56,47 @@ class MTGSetGenerator:
         Some inspirational cards. These cards are not in the set and not part of the theme. You can just use them to get a feel for the mechanics, types etc.:
         {inspiration_summary}
 
-        Create a detailed theme for a new Magic The Gathering set. Include:
-        1. Detailed history and lore of the set, including notable characters/creatures and events
-        2. Key factions, locations, events that are a part of this set
-        3. A list of creature types that appear in the set (not all, just some examples in the set)
-        4. Main mechanical themes and gameplay elements. Don't introduce new mechanics here, just describe how they are used in the set.
-        5. Potential synergies between different card types and mechanics
-        6. How the theme supports different play styles
-        
-        Note: 
-        
-        - Try to come up with original made-up names for characters, locations, and events. Not combinations of meaningful words like "Blooming Spire" or "Shadow Citadel", but rather unique names.
+        Create a detailed theme for a new Magic The Gathering set. The world should feel rich, layered, and diverse — NOT centered around a single concept or aesthetic.
 
-        Try to keep the theme broad enough, and add enough complexity to allow for a variety of card types, and keep the color distribution in mind.
-        Be as detailed as possible to create a rich and engaging world for the set.
+        Build a world with:
+
+        1. **Geography & Biomes** (at least 4-5 distinct regions):
+           - The world should span contrasting environments (e.g. volcanic wastelands, deep ocean trenches, ancient forests, floating sky-islands, underground fungal networks, frozen tundra, etc.)
+           - Each region has its own ecosystem, dangers, and resources
+           - Describe how these regions interact — trade routes, contested borders, migration paths
+
+        2. **Factions & Civilizations** (at least 3-4 major factions):
+           - Each faction should have distinct goals, culture, and methods
+           - Factions should span different colors — no faction should map to just one color
+           - Include tensions, alliances, and rivalries BETWEEN factions
+           - Some factions may span multiple regions; some regions may host competing factions
+
+        3. **History & Lore**:
+           - A deep backstory with at least one major historical event that shaped the current world
+           - Notable characters/creatures tied to different factions and regions (not all on the same side)
+           - Ongoing conflicts or mysteries that the set's story explores
+           - The world should feel like it existed before this set and will continue after
+
+        4. **Creature Types**:
+           - A diverse roster of creature types spread across the world's regions and factions
+           - Not all creatures should fit neatly into one theme — include oddities, neutral wildlife, and things that don't belong to any faction
+
+        5. **Mechanical Themes & Gameplay**:
+           - Main mechanical themes and gameplay elements. Don't introduce new mechanics, just describe how existing ones are used
+           - Different regions or factions can emphasize different play patterns
+           - Potential synergies between different card types and mechanics
+           - How the theme supports different play styles (aggro, control, midrange, combo)
+
+        6. **The In-Between**:
+           - Wanderers, outcasts, and neutral parties that don't belong to any faction
+           - Wild magic, ancient ruins, or natural phenomena that exist outside faction control
+           - Moral ambiguity — no faction is purely good or evil
+
+        Important guidelines:
+        - Try to come up with original made-up names for characters, locations, and events. Not combinations of meaningful words like "Blooming Spire" or "Shadow Citadel", but rather unique, invented names.
+        - The set should NOT feel like it revolves around one central gimmick or aesthetic. It should feel like a living world with many stories happening at once.
+        - Keep the color distribution in mind — every color should have a strong presence with its own identity in this world.
+        - Be as detailed as possible to create a rich and engaging world for the set.
 
         """
 
