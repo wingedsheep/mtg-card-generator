@@ -39,10 +39,35 @@ class MTGJSONConverter:
                     else: # Could not easily recover a dict
                         raise ValueError("Converted JSON is not a dictionary as expected for rendering format.")
 
+                # Enforce correct name and image path from original data,
+                # since LLMs can corrupt special characters (e.g. accented letters)
+                original_name = card_data_for_prompt.get("name", "")
+                if original_name:
+                    converted_json["name"] = original_name
+                original_image_path = card_data_for_prompt.get("image_path", "")
+                if original_image_path:
+                    converted_json["image_uris"] = {
+                        "art_crop": f"../card-generator/{original_image_path}"
+                    }
+                original_collector_number = card_data_for_prompt.get("collector_number", "")
+                if original_collector_number:
+                    converted_json["collector_number"] = original_collector_number
+
+                # Sanitize colors to only contain valid WUBRG values or known special types
+                valid_colors = {"W", "U", "B", "R", "G", "WU", "WB", "WR", "WG", "UB", "UR", "UG", "BR", "BG", "RG",
+                                "Artifact", "Vehicle", "Land", "Gold"}
+                if "colors" in converted_json and isinstance(converted_json["colors"], list):
+                    sanitized = [c for c in converted_json["colors"] if c in valid_colors]
+                    if not sanitized:
+                        # Fall back to deriving colors from the original card's colors
+                        original_colors = card_data_for_prompt.get("colors", [])
+                        if original_colors:
+                            sanitized = original_colors
+                    converted_json["colors"] = sanitized
+
                 # Add original_name field for basic lands with variation numbers, if applicable
                 # This logic might be better placed in the prompt or handled by the LLM,
                 # but can be post-processed here for consistency.
-                original_name = card_data_for_prompt.get("name", "")
                 if any(land_type in original_name for land_type in
                        ["Plains", "Island", "Swamp", "Mountain", "Forest"]) and " " in original_name:
                     # Ensure the converted_json has the base name (e.g. "Plains")

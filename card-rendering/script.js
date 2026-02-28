@@ -122,6 +122,24 @@ function setupTextResizing(cardEl, props) {
           characterData: true
         });
       }
+    } else if (props.is_planeswalker) {
+      const oracle = cardEl.querySelector('.planeswalker-oracle');
+      if (oracle) {
+        const resizePWOracle = () => {
+          let fontSize = 6.48;
+          oracle.style.fontSize = `${fontSize}pt`;
+          while (oracle.scrollHeight > oracle.clientHeight && fontSize > 4.0) {
+            fontSize -= 0.2;
+            oracle.style.fontSize = `${fontSize}pt`;
+          }
+        };
+        const pwResizeObserver = new ResizeObserver(resizePWOracle);
+        pwResizeObserver.observe(oracle);
+        resizePWOracle();
+
+        const pwMutationObserver = new MutationObserver(resizePWOracle);
+        pwMutationObserver.observe(oracle, { childList: true, subtree: true, characterData: true });
+      }
     } else if (props.is_saga) {
       // For saga cards, handle saga oracle text resizing
       const sagaReminderEl = cardEl.querySelector('.saga-reminder');
@@ -412,7 +430,8 @@ function computeCardProps(card, currentFace = 0) {
   else if (props.is_transform) folder = currentFace === 0 ? "transform_frames" : "transform_back_frames";
   else folder = "frames";
   if (props.extended_art && !props.is_saga && !props.is_class) folder = "extended_" + folder;
-  let frameColor = (props.colors === "Artifact" && props.card_face.colors && props.card_face.colors.length === 1)
+  let frameColor = (props.colors === "Artifact" && props.card_face.colors && props.card_face.colors.length === 1
+      && "WUBRG".includes(props.card_face.colors[0]))
       ? props.card_face.colors[0]
       : props.colors;
   props.frame = `url(assets/img/${folder}/${frameColor}.webp)`;
