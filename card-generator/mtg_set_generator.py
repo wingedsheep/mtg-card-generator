@@ -84,6 +84,7 @@ class MTGSetGenerator:
            - Describe small parasitic organisms, massive apex predators, hive-mind colonies, symbiotic pairs, and everything in between
            - Some creatures should be mysterious or defy easy categorization
            - Not all creatures should fit neatly into one theme — include oddities, neutral wildlife, and things that don't belong to any faction
+           - INVENT new creature types unique to this world. Don't only use existing MTG creature types — come up with original species that feel native to this setting
 
 
         5. **Mechanical Themes & Gameplay**:
@@ -375,6 +376,7 @@ Return only the JSON array with no additional text or explanation."""
         - Vary the TONE of cards: include at least one card that is humorous, eerie, tragic, or whimsical — not everything should feel epic and grand.
         - Vary card designs: include utility spells, combat tricks, build-around enchantments, equipment, and niche cards — not just efficient creatures and removal.
         - Don't make every creature a humanoid fighter or mage. Include animals, parasites, swarm creatures, animated objects, and alien beings.
+        - Be original — invent new creature types that are unique to this set's world. Not every creature needs to use an existing MTG creature type.
         - Flavor text should vary in style: some poetic, some dialogue, some ominous, some matter-of-fact. Avoid a uniform "epic fantasy" voice.
         - Some cards should depict small, mundane, or overlooked aspects of the world — a pest, a common tool, a forgotten ruin, daily life.
 
