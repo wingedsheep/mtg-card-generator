@@ -77,9 +77,14 @@ class MTGSetGenerator:
            - Ongoing conflicts or mysteries that the set's story explores
            - The world should feel like it existed before this set and will continue after
 
-        4. **Creature Types**:
-           - A diverse roster of creature types spread across the world's regions and factions
+        4. **Creature Types** (CRITICAL — maximize diversity):
+           - Include a WIDE variety of creature types: humanoids, beasts, insects, oozes, horrors, elementals, spirits, constructs, fungi, plants, wurms, drakes, leviathans, nightmares, shapeshifters, etc.
+           - Every region should have its own unique endemic creatures that couldn't exist anywhere else
+           - Include bizarre, alien, and unsettling creatures — not everything should be conventionally cool or pretty
+           - Describe small parasitic organisms, massive apex predators, hive-mind colonies, symbiotic pairs, and everything in between
+           - Some creatures should be mysterious or defy easy categorization
            - Not all creatures should fit neatly into one theme — include oddities, neutral wildlife, and things that don't belong to any faction
+
 
         5. **Mechanical Themes & Gameplay**:
            - Main mechanical themes and gameplay elements. Don't introduce new mechanics, just describe how existing ones are used
@@ -91,12 +96,14 @@ class MTGSetGenerator:
            - Wanderers, outcasts, and neutral parties that don't belong to any faction
            - Wild magic, ancient ruins, or natural phenomena that exist outside faction control
            - Moral ambiguity — no faction is purely good or evil
+           - Strange phenomena, cursed locations, and unexplained occurrences
 
         Important guidelines:
         - Try to come up with original made-up names for characters, locations, and events. Not combinations of meaningful words like "Blooming Spire" or "Shadow Citadel", but rather unique, invented names.
         - The set should NOT feel like it revolves around one central gimmick or aesthetic. It should feel like a living world with many stories happening at once.
         - Keep the color distribution in mind — every color should have a strong presence with its own identity in this world.
         - Be as detailed as possible to create a rich and engaging world for the set.
+        - Think about the TONE range: some parts of the world are whimsical, some are horrifying, some are melancholic, some are awe-inspiring. Not everything should have the same emotional register.
 
         """
 
@@ -362,8 +369,18 @@ Return only the JSON array with no additional text or explanation."""
         - Multi color cards are fine, but they appear less frequently than mono color cards.\
         - No dual sided cards
 
+        VARIETY IS CRITICAL — follow these rules to avoid sameness:
+        - Look at the creature types already in the set. Actively pick DIFFERENT creature types for this batch. If the set has many Soldiers and Warriors, make an Ooze, a Fungus, a Wurm, or a Nightmare instead.
+        - Include at least one creature with a weird or unusual creature type (e.g. Sliver, Crab, Jellyfish, Ooze, Eye, Homarid, Lhurgoyf, Treefolk, Scarecrow, Atog, Shapeshifter, Chimera).
+        - Vary the TONE of cards: include at least one card that is humorous, eerie, tragic, or whimsical — not everything should feel epic and grand.
+        - Vary card designs: include utility spells, combat tricks, build-around enchantments, equipment, and niche cards — not just efficient creatures and removal.
+        - Don't make every creature a humanoid fighter or mage. Include animals, parasites, swarm creatures, animated objects, and alien beings.
+        - Flavor text should vary in style: some poetic, some dialogue, some ominous, some matter-of-fact. Avoid a uniform "epic fantasy" voice.
+        - Some cards should depict small, mundane, or overlooked aspects of the world — a pest, a common tool, a forgotten ruin, daily life.
+
         First make a plan for the rare and mythic cards of this batch, what are they going to be? (notable characters described in the theme are fine as long as they are not already in the set).
         Then think of what would be a good addition to add some variety to the set and make it more interesting. What could we add to the uncommon and common cards?
+        Before finalizing the plan, review the existing cards and specifically ask: what creature types, card types, and tones are MISSING or underrepresented? Prioritize filling those gaps.
         Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
         Make a short plan for the batch, write it down, and then start creating the cards.
 
