@@ -29,21 +29,16 @@ except ImportError:
 
 class ReplicateImageGenerator(ImageGeneratorStrategy):
     def __init__(self, global_config: Any, strategy_specific_config: Dict):
-        print("[DEBUG ReplicateImageGenerator] __init__ called")
         super().__init__(global_config, strategy_specific_config)
-        print("[DEBUG ReplicateImageGenerator] super().__init__ finished")
 
     def _initialize_client_if_needed(self):
         if not REPLICATE_AVAILABLE:
             raise ImportError("Replicate library is not installed. Please install it with: pip install replicate")
 
-        print("[DEBUG ReplicateImageGenerator] _initialize_client_if_needed called")
         api_key = self.global_config.get_api_key("replicate")
-        print(f"[DEBUG ReplicateImageGenerator] API key from config: {api_key}")
         if not api_key:
             raise ValueError("Replicate API key not found in settings.json.")
         os.environ["REPLICATE_API_TOKEN"] = api_key
-        print(f"[DEBUG ReplicateImageGenerator] REPLICATE_API_TOKEN set to: {os.environ.get('REPLICATE_API_TOKEN')}")
 
     def generate_image(self, art_prompt: str, card: Any, output_dir: Path, image_name: str) -> str:
         selected_model_type = self.strategy_config.get("selected_model_type", "flux")
@@ -222,7 +217,7 @@ class HuggingFaceDiffusersImageGenerator(ImageGeneratorStrategy):
                         variant="fp16"
                     )
                     print("Loaded pipeline in FP16 with variant")
-                except:
+                except Exception:
                     # Fallback: load in FP16 without variant
                     print("FP16 variant not available, loading default model in FP16")
                     self.pipeline = DiffusionPipeline.from_pretrained(
@@ -250,7 +245,7 @@ class HuggingFaceDiffusersImageGenerator(ImageGeneratorStrategy):
             try:
                 self.pipeline.enable_xformers_memory_efficient_attention()
                 print("xFormers memory efficient attention enabled")
-            except:
+            except Exception:
                 print("xFormers not available, skipping")
 
             # For low memory systems, enable CPU offload

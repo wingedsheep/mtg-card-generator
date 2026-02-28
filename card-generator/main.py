@@ -32,110 +32,112 @@ class MTGGeneratorOrchestrator:
         # Track the collector number counter to pass to land generator
         self.collector_number_counter = 1
 
+    async def _process_batch(self, batch_num: int, total_batches: int, theme: str,
+                             all_processed_cards: List[Card]) -> None:
+        """Process a single batch: generate cards, art, render format, render images, save progress."""
+        print(f"\n=== Processing Batch {batch_num}/{total_batches} ===")
+
+        # Step 1: Generate batch of cards
+        print(f"\n--- Generating Cards for Batch {batch_num} ---")
+        batch_cards = self.set_generator.generate_batch_cards(batch_num)
+
+        # Step 2: Generate art for this batch
+        print(f"\n--- Generating Art for Batch {batch_num} ---")
+        cards_with_art = self.art_generator.process_cards(batch_cards)
+        all_processed_cards.extend(cards_with_art)
+
+        # Step 3: Convert this batch to rendering format
+        print(f"\n--- Converting Batch {batch_num} to Rendering Format ---")
+        render_json_paths = self.json_converter.convert_cards(
+            cards_with_art,
+            self.config.output_dir,
+        )
+
+        # Step 4: Render cards from this batch as images
+        print(f"\n--- Rendering Cards for Batch {batch_num} ---")
+        await self.card_renderer.render_card_files(render_json_paths)
+
+        # Save intermediate progress after each batch
+        print(f"\n--- Saving Progress for Batch {batch_num} ---")
+        stats = self._calculate_statistics(all_processed_cards)
+        combined_data = self._create_combined_data(theme, all_processed_cards, stats)
+        self._save_batch_data(combined_data, batch_num)
+
+        # Print statistics for this batch
+        print(f"\n--- Statistics after Batch {batch_num} ---")
+        self._print_statistics(stats)
+
+        # Update collector number counter for lands
+        if batch_cards:
+            max_collector_num = max(
+                int(card.collector_number) if card.collector_number and card.collector_number.isdigit() else 0
+                for card in all_processed_cards
+            )
+            self.collector_number_counter = max_collector_num + 1
+
+    async def _generate_and_render_lands(self, theme: str, all_processed_cards: List[Card]) -> None:
+        """Generate basic lands, their art, convert to render format, and render."""
+        print("\n=== Generating Basic Lands ===")
+        land_generator = MTGLandGenerator(
+            self.config,
+            theme,
+            self.collector_number_counter,
+            self.language_model_strategy,
+            art_generator=self.art_generator,
+        )
+        land_cards = land_generator.generate_basic_lands()
+        all_processed_cards.extend(land_cards)
+
+        print("\n--- Converting Lands to Rendering Format ---")
+        land_render_paths = self.json_converter.convert_cards(
+            land_cards,
+            self.config.output_dir,
+        )
+
+        print("\n--- Rendering Land Cards ---")
+        await self.card_renderer.render_card_files(land_render_paths)
+
+    def _finalize_set(self, theme: str, all_processed_cards: List[Card]) -> Dict:
+        """Calculate final stats, save complete set data, print summary."""
+        print("\n=== Finalizing Set ===")
+        final_stats = self._calculate_statistics(all_processed_cards)
+        final_data = self._create_combined_data(theme, all_processed_cards, final_stats)
+        self._save_final_data(final_data)
+
+        print(f"\nTotal cards: {len(all_processed_cards)}")
+        return final_data
+
     async def generate_complete_set(self) -> Dict:
         """Generate a complete MTG set including cards, art, and rendered images.
         Process each batch completely (cards, art, rendering) before moving to the next batch."""
         print("\n=== Starting MTG Set Generation ===")
 
-        from mtg_art_generator import MTGArtGenerator  # Import here for late initialization
+        from mtg_art_generator import MTGArtGenerator
 
         # Initialize the set (load inspiration cards and generate theme using LM strategy)
         print("\n--- Initializing Set ---")
-        self.set_generator.initialize_set()  # This now uses the LM strategy for theme
+        self.set_generator.initialize_set()
 
-        # Get the theme for art generation
         theme = self.set_generator.set_theme
 
         # Initialize art generator with theme and strategies
         self.art_generator = MTGArtGenerator(
             self.config,
             theme,
-            self.language_model_strategy,  # For art prompts
-            self.image_generator_strategy  # For image generation
+            self.language_model_strategy,
+            self.image_generator_strategy,
         )
 
-        # Process each batch completely
         all_processed_cards = []
 
         for batch_num in range(1, self.config.batches_count + 1):
-            print(f"\n=== Processing Batch {batch_num}/{self.config.batches_count} ===")
+            await self._process_batch(batch_num, self.config.batches_count, theme, all_processed_cards)
 
-            # Step 1: Generate batch of cards
-            print(f"\n--- Generating Cards for Batch {batch_num} ---")
-            batch_cards = self.set_generator.generate_batch_cards(batch_num)
-
-            # Step 2: Generate art for this batch
-            print(f"\n--- Generating Art for Batch {batch_num} ---")
-            cards_with_art = self.art_generator.process_cards(batch_cards)
-            all_processed_cards.extend(cards_with_art)
-
-            # Step 3: Convert this batch to rendering format
-            print(f"\n--- Converting Batch {batch_num} to Rendering Format ---")
-            render_json_paths = self.json_converter.convert_cards(
-                cards_with_art,
-                self.config.output_dir
-            )
-
-            # Step 4: Render cards from this batch as images
-            print(f"\n--- Rendering Cards for Batch {batch_num} ---")
-            await self.card_renderer.render_card_files(render_json_paths)
-
-            # Save intermediate progress after each batch
-            print(f"\n--- Saving Progress for Batch {batch_num} ---")
-            stats = self._calculate_statistics(all_processed_cards)
-            combined_data = self._create_combined_data(theme, all_processed_cards, stats)
-            self._save_batch_data(combined_data, batch_num)
-
-            # Print statistics for this batch
-            print(f"\n--- Statistics after Batch {batch_num} ---")
-            self._print_statistics(stats)
-
-            # Update collector number counter for lands
-            if batch_cards:
-                # Find the highest collector number in the set so far
-                max_collector_num = max(
-                    int(card.collector_number) if card.collector_number.isdigit() else 0
-                    for card in all_processed_cards
-                )
-                self.collector_number_counter = max_collector_num + 1
-
-        # Generate basic lands if enabled
         if self.config.generate_basic_lands:
-            print("\n=== Generating Basic Lands ===")
-            # Pass the current collector number to continue from where we left off
-            land_generator = MTGLandGenerator(
-                self.config,
-                theme,
-                self.collector_number_counter,
-                self.language_model_strategy,
-                self.image_generator_strategy
-            )
-            land_cards = land_generator.generate_basic_lands()
-
-            # Add lands to the processed cards
-            all_processed_cards.extend(land_cards)
-
-            # Convert lands to rendering format
-            print("\n--- Converting Lands to Rendering Format ---")
-            land_render_paths = self.json_converter.convert_cards(
-                land_cards,
-                self.config.output_dir
-            )
-
-            # Render land cards
-            print("\n--- Rendering Land Cards ---")
-            await self.card_renderer.render_card_files(land_render_paths)
-
-        # Compile and save final complete set data
-        print("\n=== Finalizing Set ===")
-        final_stats = self._calculate_statistics(all_processed_cards)
-        final_data = self._create_combined_data(theme, all_processed_cards, final_stats)
-        self._save_final_data(final_data)
+            await self._generate_and_render_lands(theme, all_processed_cards)
 
         print("\n=== Set Generation Complete ===")
-        print(f"Total cards: {len(all_processed_cards)}")
-
-        return final_data
+        return self._finalize_set(theme, all_processed_cards)
 
     async def resume_set(self) -> Dict:
         """Resume an incomplete set, picking up where we left off."""
@@ -156,14 +158,13 @@ class MTGGeneratorOrchestrator:
         # 2. Restore generator state
         self.set_generator.restore_state(
             theme=state.theme,
-            cards=list(state.cards),  # copy so generator can extend
+            cards=list(state.cards),
             collector_number_counter=state.collector_number_counter,
         )
         self.collector_number_counter = state.collector_number_counter
 
         theme = state.theme
 
-        # Initialize art generator
         self.art_generator = MTGArtGenerator(
             self.config,
             theme,
@@ -171,17 +172,13 @@ class MTGGeneratorOrchestrator:
             self.image_generator_strategy,
         )
 
-        # Track all cards (will grow as we generate new batches)
         all_processed_cards = list(state.cards)
 
         # 3. Process incomplete pipeline stages for existing cards
-
-        # 3a. Generate art for cards that need it
         if state.cards_needing_art:
             print(f"\n=== Generating Art for {len(state.cards_needing_art)} Existing Cards ===")
             self.art_generator.process_cards(state.cards_needing_art)
 
-        # 3b. Convert to render format for cards that need it
         if state.cards_needing_render_format:
             print(f"\n=== Converting {len(state.cards_needing_render_format)} Cards to Render Format ===")
             self.json_converter.convert_cards(
@@ -189,7 +186,6 @@ class MTGGeneratorOrchestrator:
                 self.config.output_dir,
             )
 
-        # 3c. Render cards that need it
         if state.cards_needing_rendering:
             print(f"\n=== Rendering {len(state.cards_needing_rendering)} Existing Cards ===")
             render_dir = self.config.output_dir / "render_format"
@@ -205,79 +201,16 @@ class MTGGeneratorOrchestrator:
         start_batch = state.batches_completed + 1
         if start_batch <= state.total_batches:
             print(f"\n=== Continuing from Batch {start_batch}/{state.total_batches} ===")
-
             for batch_num in range(start_batch, state.total_batches + 1):
-                print(f"\n=== Processing Batch {batch_num}/{state.total_batches} ===")
-
-                # Step 1: Generate batch of cards
-                print(f"\n--- Generating Cards for Batch {batch_num} ---")
-                batch_cards = self.set_generator.generate_batch_cards(batch_num)
-
-                # Step 2: Generate art for this batch
-                print(f"\n--- Generating Art for Batch {batch_num} ---")
-                cards_with_art = self.art_generator.process_cards(batch_cards)
-                all_processed_cards.extend(cards_with_art)
-
-                # Step 3: Convert to rendering format
-                print(f"\n--- Converting Batch {batch_num} to Rendering Format ---")
-                render_json_paths = self.json_converter.convert_cards(
-                    cards_with_art,
-                    self.config.output_dir,
-                )
-
-                # Step 4: Render cards
-                print(f"\n--- Rendering Cards for Batch {batch_num} ---")
-                await self.card_renderer.render_card_files(render_json_paths)
-
-                # Save intermediate progress
-                print(f"\n--- Saving Progress for Batch {batch_num} ---")
-                stats = self._calculate_statistics(all_processed_cards)
-                combined_data = self._create_combined_data(theme, all_processed_cards, stats)
-                self._save_batch_data(combined_data, batch_num)
-
-                print(f"\n--- Statistics after Batch {batch_num} ---")
-                self._print_statistics(stats)
-
-                # Update collector number counter
-                if batch_cards:
-                    max_collector_num = max(
-                        int(card.collector_number) if card.collector_number and card.collector_number.isdigit() else 0
-                        for card in all_processed_cards
-                    )
-                    self.collector_number_counter = max_collector_num + 1
+                await self._process_batch(batch_num, state.total_batches, theme, all_processed_cards)
 
         # 5. Generate lands if needed
         if self.config.generate_basic_lands and not state.has_lands:
-            print("\n=== Generating Basic Lands ===")
-            land_generator = MTGLandGenerator(
-                self.config,
-                theme,
-                self.collector_number_counter,
-                self.language_model_strategy,
-                self.image_generator_strategy,
-            )
-            land_cards = land_generator.generate_basic_lands()
-            all_processed_cards.extend(land_cards)
-
-            print("\n--- Converting Lands to Rendering Format ---")
-            land_render_paths = self.json_converter.convert_cards(
-                land_cards,
-                self.config.output_dir,
-            )
-
-            print("\n--- Rendering Land Cards ---")
-            await self.card_renderer.render_card_files(land_render_paths)
+            await self._generate_and_render_lands(theme, all_processed_cards)
 
         # 6. Save final complete set
-        print("\n=== Finalizing Set ===")
-        final_stats = self._calculate_statistics(all_processed_cards)
-        final_data = self._create_combined_data(theme, all_processed_cards, final_stats)
-        self._save_final_data(final_data)
-
         print("\n=== Set Resume Complete ===")
-        print(f"Total cards: {len(all_processed_cards)}")
-
-        return final_data
+        return self._finalize_set(theme, all_processed_cards)
 
     def _load_generated_cards(self) -> tuple[str, List[Card]]:
         """Load the generated card set."""

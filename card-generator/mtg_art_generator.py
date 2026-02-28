@@ -5,6 +5,11 @@ import time
 from models import Card, Config
 from language_model_strategies import LanguageModelStrategy
 from image_generation_strategies import ImageGeneratorStrategy
+from prompts import build_art_prompt
+
+MAX_ART_RETRIES = 3
+IMAGE_RETRY_DELAY = 5
+PROMPT_RETRY_DELAY = 2
 
 
 class MTGArtGenerator:
@@ -20,62 +25,28 @@ class MTGArtGenerator:
 
     def generate_art_prompt_text(self, card: Card, attempt: int = 0) -> str:
         """Generate an art prompt for a given card using the configured LanguageModelStrategy."""
-        theme_context = f"""Set Theme Context:
-{self.theme}
-
-Consider this theme when creating the art prompt. The art should reflect both the card's individual characteristics and the overall set theme.""" if self.theme else ""
-
-        saga_instructions = ""
-        if "Saga" in card.type:
-            saga_instructions = """
-IMPORTANT: This is a Saga card which requires VERTICAL art composition (portrait orientation). 
-The art should be tall rather than wide. Saga cards display art along the right side of the card in a vertical format.
-Create a VERTICAL composition that works well with the Saga card layout.
-"""
-
-        # Check if we're using the Diffusers strategy and need shorter prompts
         image_strategy = self.config.get_image_generation_config().get("strategy", "replicate").lower()
-        is_diffusers_strategy = image_strategy == "diffusers"
+        is_diffusers = image_strategy == "diffusers"
 
-        if is_diffusers_strategy:
-            length_instructions = """
-CRITICAL: This prompt will be used with Hugging Face Diffusers which has a 77-token limit. 
-Generate a concise, focused prompt that is MAXIMUM 70 tokens (approximately 50 words).
-Focus on the most essential visual elements only. Be concise but vivid.
-Prioritize the most important visual aspects of the card.
-"""
-        else:
-            length_instructions = """
-- Focus on vivid, detailed scenes reflecting mechanics and flavor.
-- Specify composition, lighting, mood, and key details.
-"""
+        prompt_content = build_art_prompt(
+            card_name=card.name,
+            card_type=card.type,
+            card_rarity=card.rarity,
+            card_text=card.text,
+            card_flavor=card.flavor,
+            card_colors=card.colors,
+            card_power=card.power,
+            card_toughness=card.toughness,
+            card_description=card.description,
+            theme=self.theme,
+            is_diffusers=is_diffusers,
+            attempt=attempt,
+        )
 
-        prompt_content = f"""Create a detailed art prompt for a Magic: The Gathering card.
-{saga_instructions}
-Theme: {theme_context}
-Card Name: {card.name}
-Type: {card.type}
-Rarity: {card.rarity}
-Card Text: {card.text}
-Flavor Text: {card.flavor}
-Colors: {', '.join(card.colors) if card.colors else 'Colorless'}
-P/T: {card.power}/{card.toughness} (if applicable)
-Description: {card.description}
-
-Instructions for prompt generation:
-{length_instructions}
-- Start with "Oil on canvas painting. Magic the gathering art. Rough brushstrokes."
-- Ensure prompt is safe for work.
-- If a character name is present, include their full name.
-- Return only the prompt text.
-{f"Retry attempt {attempt}: Focus on safety and clarity." if attempt > 0 else ""}
-"""
-
-        # Use the language model strategy to generate the art prompt
         art_prompt_text = self.language_model.generate_text(
             prompt=prompt_content,
             system_prompt="You are an expert MTG art prompt generator.",
-            model_key="art_prompt_generation"  # Key from language_model settings
+            model_key="art_prompt_generation"
         )
         return art_prompt_text.strip()
 
@@ -94,8 +65,8 @@ Instructions for prompt generation:
             json.dump(output_data, f, indent=2)
         print(f"Card data with art details saved to {json_path}")
 
-    def generate_and_save_card_art(self, card: Card, art_prompt: str, max_retries: int = 3,
-                                   retry_delay: int = 5) -> str:
+    def generate_and_save_card_art(self, card: Card, art_prompt: str, max_retries: int = MAX_ART_RETRIES,
+                                   retry_delay: int = IMAGE_RETRY_DELAY) -> str:
         """
         Generates image using the configured ImageGeneratorStrategy and saves it.
         Returns the absolute path to the saved image.
@@ -121,13 +92,40 @@ Instructions for prompt generation:
         return ""  # Should not be reached if max_retries > 0
 
     def process_card(self, card: Card) -> Card:
-        """Process a single card: generate art prompt, generate image, update card."""
+        """Process a single card: generate art prompt, generate image, update card.
+
+        If card.art_prompt is already set (and not an error string), prompt generation
+        is skipped and the existing prompt is used directly for image generation.
+        """
         print(f"\nProcessing art for card: {card.name}")
 
-        # 1. Generate Art Prompt Text
-        # Retry logic for prompt generation can be added here if needed, or assumed to be simpler.
+        # Skip prompt generation if the card already has a valid art prompt
+        if card.art_prompt and not card.art_prompt.startswith("Error:"):
+            art_prompt_text = card.art_prompt
+            print(f"Using existing art prompt: {art_prompt_text[:100]}...")
+        else:
+            art_prompt_text = self._generate_art_prompt_with_retries(card)
+            if not art_prompt_text:
+                return card
+            card.art_prompt = art_prompt_text
+
+        # 2. Generate and Save Image using the strategy
+        try:
+            saved_image_path_str = self.generate_and_save_card_art(card, art_prompt_text)
+            card.image_path = saved_image_path_str
+            print(f"Image for {card.name} generated and path set to: {card.image_path}")
+        except Exception as e:
+            print(f"Failed to generate and save image for {card.name}: {e}")
+            card.image_path = None
+
+        # 3. Save/Update Card JSON data (includes art_prompt and image_path)
+        self.save_card_json_with_art_details(card)
+        return card
+
+    def _generate_art_prompt_with_retries(self, card: Card) -> str:
+        """Try to generate an art prompt, retrying on failure. Returns empty string on total failure."""
         art_prompt_text = ""
-        for attempt in range(3):  # Simple retry for prompt generation
+        for attempt in range(MAX_ART_RETRIES):
             try:
                 art_prompt_text = self.generate_art_prompt_text(card, attempt=attempt)
 
@@ -147,40 +145,20 @@ Instructions for prompt generation:
                     break
             except Exception as e:
                 print(f"Error generating art prompt for {card.name} (attempt {attempt + 1}): {e}")
-                if attempt == 2:
+                if attempt == MAX_ART_RETRIES - 1:
                     print(f"Failed to generate art prompt for {card.name}. Skipping art.")
                     card.art_prompt = "Error: Failed to generate prompt"
-                    # card.image_path remains None
-                    self.save_card_json_with_art_details(card)  # Save with error state
-                    return card  # Return card without art if prompt fails critically
-                time.sleep(2)
+                    self.save_card_json_with_art_details(card)
+                    return ""
+                time.sleep(PROMPT_RETRY_DELAY)
 
-        if not art_prompt_text:  # If loop finished without a good prompt
+        if not art_prompt_text:
             print(f"Art prompt generation ultimately failed for {card.name}. Skipping art.")
             card.art_prompt = "Error: Prompt generation failed after retries"
             self.save_card_json_with_art_details(card)
-            return card
+            return ""
 
-        card.art_prompt = art_prompt_text
-
-        # 2. Generate and Save Image using the strategy
-        try:
-            # The image generation strategy handles its own retries internally if designed so,
-            # or we can wrap its call in retries here. The current design implies generate_and_save_card_art handles retries.
-            saved_image_path_str = self.generate_and_save_card_art(card, art_prompt_text)
-            card.image_path = saved_image_path_str  # Store the absolute path
-            print(f"Image for {card.name} generated and path set to: {card.image_path}")
-        except Exception as e:
-            print(f"Failed to generate and save image for {card.name}: {e}")
-            card.image_path = None  # Ensure path is None if art generation fails
-            # Art prompt is still saved, image_path indicates failure.
-
-        # 3. Save/Update Card JSON data (includes art_prompt and image_path)
-        # This is crucial to do after art generation attempt, regardless of success,
-        # to save the art_prompt and the status of image_path.
-        self.save_card_json_with_art_details(card)
-
-        return card
+        return art_prompt_text
 
     def process_cards(self, cards: List[Card]) -> List[Card]:
         """Process a list of cards, generating art and saving data for each."""

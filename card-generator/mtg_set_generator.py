@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 
 from models import Config, Card
 from language_model_strategies import LanguageModelStrategy
+from prompts import build_theme_prompt, build_batch_prompt, build_text_to_json_prompt
 
 
 class MTGSetGenerator:
@@ -52,98 +53,11 @@ class MTGSetGenerator:
 
     def _get_theme_prompt(self, inspiration_summary: str) -> str:
         """Get the prompt for set theme generation."""
-        base_prompt = f"""
-        Some inspirational cards. These cards are not in the set and not part of the theme. You can just use them to get a feel for the mechanics, types etc.:
-        {inspiration_summary}
-
-        Create a detailed theme for a new Magic The Gathering set. The world should feel rich, layered, and diverse — NOT centered around a single concept or aesthetic.
-
-        Build a world with:
-
-        1. **Geography & Biomes** (at least 4-5 distinct regions):
-           - The world should span contrasting environments (e.g. volcanic wastelands, deep ocean trenches, ancient forests, floating sky-islands, underground fungal networks, frozen tundra, etc.)
-           - Each region has its own ecosystem, dangers, and resources
-           - Describe how these regions interact — trade routes, contested borders, migration paths
-
-        2. **Factions & Civilizations** (at least 3-4 major factions):
-           - Each faction should have distinct goals, culture, and methods
-           - Factions should span different colors — no faction should map to just one color
-           - Include tensions, alliances, and rivalries BETWEEN factions
-           - Some factions may span multiple regions; some regions may host competing factions
-
-        3. **History & Lore**:
-           - A deep backstory with at least one major historical event that shaped the current world
-           - Notable characters/creatures tied to different factions and regions (not all on the same side)
-           - Ongoing conflicts or mysteries that the set's story explores
-           - The world should feel like it existed before this set and will continue after
-
-        4. **Creature Types** (CRITICAL — maximize diversity):
-           - Include a WIDE variety of creature types: humanoids, beasts, insects, oozes, horrors, elementals, spirits, constructs, fungi, plants, wurms, drakes, leviathans, nightmares, shapeshifters, etc.
-           - Every region should have its own unique endemic creatures that couldn't exist anywhere else
-           - Include bizarre, alien, and unsettling creatures — not everything should be conventionally cool or pretty
-           - Describe small parasitic organisms, massive apex predators, hive-mind colonies, symbiotic pairs, and everything in between
-           - Some creatures should be mysterious or defy easy categorization
-           - Not all creatures should fit neatly into one theme — include oddities, neutral wildlife, and things that don't belong to any faction
-           - INVENT new creature types unique to this world. Don't only use existing MTG creature types — come up with original species that feel native to this setting
-
-
-        5. **Mechanical Themes & Gameplay**:
-           - Main mechanical themes and gameplay elements. Don't introduce new mechanics, just describe how existing ones are used
-           - Different regions or factions can emphasize different play patterns
-           - Potential synergies between different card types and mechanics
-           - How the theme supports different play styles (aggro, control, midrange, combo)
-
-        6. **The In-Between**:
-           - Wanderers, outcasts, and neutral parties that don't belong to any faction
-           - Wild magic, ancient ruins, or natural phenomena that exist outside faction control
-           - Moral ambiguity — no faction is purely good or evil
-           - Strange phenomena, cursed locations, and unexplained occurrences
-
-        Important guidelines:
-        - Try to come up with original made-up names for characters, locations, and events. Not combinations of meaningful words like "Blooming Spire" or "Shadow Citadel", but rather unique, invented names.
-        - The set should NOT feel like it revolves around one central gimmick or aesthetic. It should feel like a living world with many stories happening at once.
-        - Keep the color distribution in mind — every color should have a strong presence with its own identity in this world.
-        - Be as detailed as possible to create a rich and engaging world for the set.
-        - Think about the TONE range: some parts of the world are whimsical, some are horrifying, some are melancholic, some are awe-inspiring. Not everything should have the same emotional register.
-
-        """
-
-        # If a theme prompt is provided, incorporate it into the base prompt
-        if self.config.theme_prompt:
-            base_prompt = f"""Base the theme on the following prompt: {self.config.theme_prompt}
-
-{base_prompt}"""
-
-        return base_prompt
+        return build_theme_prompt(inspiration_summary, self.config.theme_prompt)
 
     def convert_text_to_json(self, cards_text: str) -> List[Dict]:
         """Convert card text descriptions to JSON format."""
-        prompt = f"""Convert the following Magic: The Gathering card descriptions into a JSON array.
-Each card has the following fields: name, mana_cost, type, rarity, power (null if not creature), 
-toughness (null if not creature), loyalty (null if not planeswalker), text, flavor, colors (array of W, U, B, R, G or none if colorless), description.
-
-class Card:
-    name: str
-    mana_cost: str
-    type: str
-    rarity: str
-    text: str
-    colors: List[str]
-    flavor: Optional[str] = None,
-    power: Optional[str] = None
-    toughness: Optional[str] = None
-    loyalty: Optional[str] = None
-    set_name: str = ""
-    art_prompt: Optional[str] = None
-    image_path: Optional[str] = None
-    collector_number: Optional[str] = None
-    description: str = ""
-
-Cards to convert:
-
-{cards_text}
-
-Return only the JSON array with no additional text or explanation."""
+        prompt = build_text_to_json_prompt(cards_text)
         try:
             # Use the language_model strategy for JSON conversion
             # The specific model (e.g., "json_conversion_from_text") is chosen by the strategy
@@ -270,138 +184,26 @@ Return only the JSON array with no additional text or explanation."""
 
     def _get_batch_prompt(self, current_distribution: Dict[str, float]) -> str:
         """Get the prompt for batch generation with improved formatting and clarity."""
-        # Get inspiration cards formatted string
-        inspiration_cards = "\n".join([
+        inspiration_cards_text = "\n".join([
             f"- {card.name} ({card.rarity}): {card.type} with {card.mana_cost}, {card.text}"
             for card in self.inspiration_cards
         ])
 
-        # Get existing cards formatted string
-        existing_cards = "\n".join([
+        existing_cards_text = "\n".join([
             f"- {card.name} ({card.rarity}): {card.type} with {card.mana_cost}, {card.text}"
             for card in self.generated_cards
         ])
 
-        def get_representation_level(diff):
-            # Since target is 0.2 (20%), calculate percentage relative to target
-            percentage_diff = (diff / 0.2) * 100
-
-            if abs(percentage_diff) < 10:  # Less than 10% difference from target
-                return "well-balanced"
-            elif abs(percentage_diff) < 25:  # 10-25% difference from target
-                return "slightly " + ("under" if diff > 0 else "over") + "-represented"
-            elif abs(percentage_diff) < 50:  # 25-50% difference from target
-                return "significantly " + ("under" if diff > 0 else "over") + "-represented"
-            else:  # More than 50% difference from target
-                return "severely " + ("under" if diff > 0 else "over") + "-represented"
-
-        cards_per_batch = (self.config.mythics_per_batch +
-                           self.config.rares_per_batch +
-                           self.config.uncommons_per_batch +
-                           self.config.commons_per_batch)
-
-        color_analysis = f"""Color Distribution Analysis:
-        - White (W): {abs(0.2 - current_distribution.get('W', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('W', 0))}
-        - Blue (U): {abs(0.2 - current_distribution.get('U', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('U', 0))}
-        - Black (B): {abs(0.2 - current_distribution.get('B', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('B', 0))}
-        - Red (R): {abs(0.2 - current_distribution.get('R', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('R', 0))}
-        - Green (G): {abs(0.2 - current_distribution.get('G', 0)) * 100:.1f}% {get_representation_level(0.2 - current_distribution.get('G', 0))}
-
-        Priority for upcoming cards:
-        1. Colors that are severely under-represented should be highest priority
-        2. Colors that are significantly under-represented should be high priority
-        3. Colors that are over-represented should be generated less in this batch
-        4. Maintain overall color balance"""
-
-        return f"""Based on the following context for a Magic The Gathering set:
-
-        Some inspirational cards. Just use these for mechanics, types etc. These cards are not in the set and not part of the theme:
-        {inspiration_cards}
-
-        Theme:
-        {self.set_theme}
-
-        # Card Rarity Guidelines
-
-        ## Common
-        - Simple, vanilla effects that work in multiples
-        - Basic creature types and spells
-        - Usually clean, short rules text, or no rules at all
-        - Foundation of gameplay mechanics
-
-        ## Uncommon
-        - Moderately complex abilities
-        - Support for specific strategies
-        - Clear synergies with other cards
-
-        ## Rare
-        - Format-defining effects
-        - Important characters or spells
-        - Unique mechanics
-        - Can shape deck strategies
-
-        ## Mythic Rare
-        - Game-changing effects
-        - Major characters
-        - Splashy, memorable designs
-        - Build-around centerpieces
-
-        Existing cards in the set:
-        {existing_cards}
-
-        Color analysis:
-        {color_analysis}
-
-        Instructions:
-
-        - Create a batch of new cards that fit into the theme of the set.
-        - Think of how this batch adds to the existing cards in the set.
-        - Make sure this batch has some memorable cards.
-        - Ensure that these cards are different enough from the cards already in the set. They should add to the variety and depth of the set.
-        - Think about already existing cards, and how the cards in this batch complement those cards.
-        - Cards in this batch are varied and different enough from the existing cards in the set.
-        - Think about the color distribution analysis above and prioritize underrepresented colors.
-        - Try to keep card types in the set well-balanced. Also, make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
-        - Make sure the color distribution in the whole set is balanced. Artifacts and colorless cards are also important, if they fit the theme.
-        - ALWAYS include an explanation between brackets for less common mechanics.
-        Well known mechanics like flying, haste, etc. do not need explanations.
-        - Think about synergy in the set.
-        - Look at the rarity instructions.
-        - Multi color cards are fine, but they appear less frequently than mono color cards.\
-        - No dual sided cards
-
-        VARIETY IS CRITICAL — follow these rules to avoid sameness:
-        - Look at the creature types already in the set. Actively pick DIFFERENT creature types for this batch. If the set has many Soldiers and Warriors, make an Ooze, a Fungus, a Wurm, or a Nightmare instead.
-        - Include at least one creature with a weird or unusual creature type (e.g. Sliver, Crab, Jellyfish, Ooze, Eye, Homarid, Lhurgoyf, Treefolk, Scarecrow, Atog, Shapeshifter, Chimera).
-        - Vary the TONE of cards: include at least one card that is humorous, eerie, tragic, or whimsical — not everything should feel epic and grand.
-        - Vary card designs: include utility spells, combat tricks, build-around enchantments, equipment, and niche cards — not just efficient creatures and removal.
-        - Don't make every creature a humanoid fighter or mage. Include animals, parasites, swarm creatures, animated objects, and alien beings.
-        - Be original — invent new creature types that are unique to this set's world. Not every creature needs to use an existing MTG creature type.
-        - Flavor text should vary in style: some poetic, some dialogue, some ominous, some matter-of-fact. Avoid a uniform "epic fantasy" voice.
-        - Some cards should depict small, mundane, or overlooked aspects of the world — a pest, a common tool, a forgotten ruin, daily life.
-
-        First make a plan for the rare and mythic cards of this batch, what are they going to be? (notable characters described in the theme are fine as long as they are not already in the set).
-        Then think of what would be a good addition to add some variety to the set and make it more interesting. What could we add to the uncommon and common cards?
-        Before finalizing the plan, review the existing cards and specifically ask: what creature types, card types, and tones are MISSING or underrepresented? Prioritize filling those gaps.
-        Keeping in mind the number of rarities in this batch. These could inspire the cards in the batch.
-        Make a short plan for the batch, write it down, and then start creating the cards.
-
-        Then generate {cards_per_batch} new cards, fitting the theme, with the following rarity distribution:
-        - {self.config.mythics_per_batch} Mythic Rare
-        - {self.config.rares_per_batch} Rare
-        - {self.config.uncommons_per_batch} Uncommon
-        - {self.config.commons_per_batch} Common
-
-        For each card, provide a complete description in this format:
-        Card Name (Rarity)
-        Mana Cost: [cost]
-        Type: [type]
-        Power/Toughness: [P/T] (if creature)
-        Loyalty: [loyalty] (if planeswalker)
-        Rules Text: [text]
-        Flavor Text: [flavor]
-        Colors: [colors]
-        Description: [short lore + visual description]"""
+        return build_batch_prompt(
+            inspiration_cards_text=inspiration_cards_text,
+            set_theme=self.set_theme,
+            existing_cards_text=existing_cards_text,
+            current_distribution=current_distribution,
+            mythics_per_batch=self.config.mythics_per_batch,
+            rares_per_batch=self.config.rares_per_batch,
+            uncommons_per_batch=self.config.uncommons_per_batch,
+            commons_per_batch=self.config.commons_per_batch,
+        )
 
     def initialize_set(self) -> None:
         """Initialize the set by loading inspiration cards and generating the theme."""

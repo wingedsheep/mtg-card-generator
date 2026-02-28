@@ -174,7 +174,7 @@ class Card:
     rarity: str
     text: str
     colors: List[str]
-    flavor: Optional[str] = None,
+    flavor: Optional[str] = None
     power: Optional[str] = None
     toughness: Optional[str] = None
     loyalty: Optional[str] = None

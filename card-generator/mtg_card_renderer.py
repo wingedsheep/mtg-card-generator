@@ -4,6 +4,12 @@ import asyncio
 from playwright.async_api import async_playwright
 from models import Config
 
+RENDER_SCALE = 4
+VIEWPORT_WIDTH = 1600
+VIEWPORT_HEIGHT = 2400
+RENDER_SETTLE_MS = 500
+RENDER_TRANSFORM_MS = 1000
+
 
 class MTGCardRenderer:
     def __init__(self, config: Config):
@@ -35,7 +41,7 @@ class MTGCardRenderer:
         async with async_playwright() as p:
             # Launch browser with a larger viewport
             browser = await p.chromium.launch()
-            page = await browser.new_page(viewport={'width': 1600, 'height': 2400})
+            page = await browser.new_page(viewport={'width': VIEWPORT_WIDTH, 'height': VIEWPORT_HEIGHT})
 
             # Load the renderer page
             await page.goto(f"file://{self.complete_html_path.absolute()}")
@@ -57,7 +63,7 @@ class MTGCardRenderer:
                     await page.fill('#card-json', json.dumps(card_data, indent=2))
 
                     # Allow a short delay for the content to be processed
-                    await page.wait_for_timeout(500)
+                    await page.wait_for_timeout(RENDER_SETTLE_MS)
 
                     # Click the render button
                     await page.click('#render-button')
@@ -65,19 +71,19 @@ class MTGCardRenderer:
                     # Wait for the card element to render
                     await page.wait_for_selector('.mtg-card')
 
-                    # Apply a CSS transform to scale the .mtg-card element by 4
-                    await page.evaluate('''
-                        () => {
+                    # Apply a CSS transform to scale the .mtg-card element
+                    await page.evaluate(f'''
+                        () => {{
                             const card = document.querySelector('.mtg-card');
-                            if (card) {
-                                card.style.transform = 'scale(4)';
+                            if (card) {{
+                                card.style.transform = 'scale({RENDER_SCALE})';
                                 card.style.transformOrigin = 'top left';
-                            }
-                        }
+                            }}
+                        }}
                     ''')
 
                     # Wait a short moment to allow the transform to take effect
-                    await page.wait_for_timeout(1000)
+                    await page.wait_for_timeout(RENDER_TRANSFORM_MS)
 
                     # Retrieve the .mtg-card element
                     card_element = await page.query_selector('.mtg-card')
