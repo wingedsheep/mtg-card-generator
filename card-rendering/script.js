@@ -324,12 +324,14 @@ function computeCardProps(card, currentFace = 0) {
   if (props.is_planeswalker && props.card_face.oracle_text) {
     props.planeswalker_abilities = props.card_face.oracle_text.split("\n").map(line => {
       let ability = { html: parseOracle(line), cost: null };
-      let m = line.match(/^[+-−]?(\d+):/);
+      let m = line.match(/^\[?([+-−]?\d+)\]?\s*:/);
       if (m) {
-        if (line[0] === "0") ability.cost = 0;
-        else if (line[0] === "+") ability.cost = parseInt(m[1]);
-        else ability.cost = -parseInt(m[1]);
-        ability.html = parseOracle(line.substr(m[0].length + 1));
+        let sign = m[1][0];
+        if (sign === "0" || m[1] === "0") ability.cost = 0;
+        else if (sign === "+") ability.cost = parseInt(m[1].substr(1));
+        else if (sign === "-" || sign === "−") ability.cost = -parseInt(m[1].substr(1));
+        else ability.cost = parseInt(m[1]); // bare number, treat as positive
+        ability.html = parseOracle(line.substr(m[0].length).trimStart());
       }
       return ability;
     });
@@ -586,7 +588,7 @@ function buildPlaneswalkerCardHTML(props, card) {
       ${props.planeswalker_abilities ? props.planeswalker_abilities.map(ability => {
     if (ability.cost !== null) {
       return `<div class="planeswalker-ability planeswalker-ability-with-cost">
-                    <div class="planeswalker-ability-cost ${ability.cost > 0 ? "planeswalker-ability-cost-plus" : "planeswalker-ability-cost-minus"}">
+                    <div class="planeswalker-ability-cost ${ability.cost > 0 ? "planeswalker-ability-cost-plus" : ability.cost === 0 ? "planeswalker-ability-cost-zero" : "planeswalker-ability-cost-minus"}">
                       ${ability.cost > 0 ? "+" + ability.cost : ability.cost}
                     </div>
                     <div class="planeswalker-ability-text">${ability.html}</div>
